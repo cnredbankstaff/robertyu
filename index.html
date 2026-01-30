@@ -15,30 +15,12 @@
     .font-orbitron { font-family: 'Orbitron', sans-serif; }
     .font-teko { font-family: 'Teko', sans-serif; }
     
-    @keyframes breach {
-      0% { transform: translateY(100%) scale(0.8); opacity: 0; }
-      50% { transform: translateY(-10%) scale(1.05); }
-      100% { transform: translateY(0) scale(1); opacity: 1; }
-    }
-    
     @keyframes neural-pulse {
       0%, 100% { box-shadow: 0 0 20px currentColor; opacity: 0.8; }
       50% { box-shadow: 0 0 40px currentColor; opacity: 1; }
     }
     
-    @keyframes damage-flash {
-      0%, 100% { background-color: transparent; }
-      50% { background-color: rgba(255, 0, 0, 0.3); }
-    }
-    
-    @keyframes drift {
-      0%, 100% { transform: translateX(0); }
-      50% { transform: translateX(-5px); }
-    }
-    
     .neural-pulse { animation: neural-pulse 2s infinite; }
-    .damage-flash { animation: damage-flash 0.3s; }
-    .drift-anim { animation: drift 3s ease-in-out infinite; }
     
     .part-slot {
       transition: all 0.3s ease;
@@ -73,20 +55,19 @@
       transform: scale(0.95);
     }
     
-    @keyframes kaiju-roar {
-      0%, 100% { transform: scale(1) rotate(0deg); }
-      25% { transform: scale(1.1) rotate(-2deg); }
-      75% { transform: scale(1.1) rotate(2deg); }
-    }
-    
-    .kaiju-attack { animation: kaiju-roar 0.5s; }
-    
-    #canvas-container {
-      cursor: default;
-    }
-    
     .health-bar {
       transition: width 0.5s ease;
+    }
+    
+    .position-display {
+      font-family: 'Teko', sans-serif;
+      font-size: 14px;
+      color: #90e0ef;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid rgba(0,180,216,0.3);
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: inline-block;
     }
   </style>
   <style>@view-transition { navigation: auto; }</style>
@@ -98,7 +79,7 @@
     <div class="flex items-center justify-between max-w-7xl mx-auto">
      <div>
       <h1 id="game-title" class="font-orbitron text-xl md:text-3xl font-black" style="color: #00b4d8; text-shadow: 0 0 30px rgba(0,180,216,0.8);">⚔️ JAEGER CONSTRUCTOR</h1>
-      <p id="instruction-text" class="font-teko text-sm md:text-base" style="color: #90e0ef;">Build your mech • Weld parts vertically • Deploy to combat!</p>
+      <p id="instruction-text" class="font-teko text-sm md:text-base" style="color: #90e0ef;">Build your mech • Move parts with arrows • Weld to attach!</p>
      </div>
      <div class="flex gap-2"><button id="build-mode-btn" class="combat-btn font-orbitron px-4 py-2 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #00b4d8, #0077b6); color: #000814; border: 2px solid #00b4d8;"> <span id="build-mode-label">🔧 BUILD</span> </button> <button id="combat-mode-btn" class="combat-btn font-orbitron px-4 py-2 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #e63946, #d62828); color: #fff; border: 2px solid #e63946;"> <span id="combat-mode-label">⚔️ COMBAT</span> </button>
      </div>
@@ -129,13 +110,40 @@
      <div class="flex-1 relative">
       <div id="build-canvas" class="w-full h-full"></div><!-- Build Controls -->
       <div class="absolute top-4 right-4 space-y-2">
-       <div class="font-teko text-sm px-3 py-2 rounded" style="background: rgba(0,0,0,0.8); color: #90e0ef; border: 1px solid rgba(0,180,216,0.3);">
-        Height: <span id="current-height" class="font-bold">0</span>m
-       </div><button id="move-up-btn" class="combat-btn w-full font-orbitron px-4 py-2 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #0077b6, #023e8a); color: #fff; border: 2px solid #0077b6;"> ▲ UP </button> <button id="move-down-btn" class="combat-btn w-full font-orbitron px-4 py-2 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #0077b6, #023e8a); color: #fff; border: 2px solid #0077b6;"> ▼ DOWN </button> <button id="weld-btn" class="combat-btn w-full font-orbitron px-4 py-3 rounded-lg text-sm font-bold disabled:opacity-50" style="background: linear-gradient(135deg, #ffc300, #ffb700); color: #000814; border: 2px solid #ffd60a;"> ⚡ WELD </button> <button id="clear-jaeger-btn" class="combat-btn w-full font-teko px-4 py-2 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #6c757d, #495057); color: #fff; border: 2px solid #6c757d;"> 🔄 RESET </button>
-      </div><!-- Part Slots Indicator -->
-      <div class="absolute bottom-4 left-4 space-y-2" id="slot-indicator">
-       <div class="font-orbitron text-xs px-3 py-1 rounded" style="background: rgba(0,0,0,0.8); color: #90e0ef; border: 1px solid rgba(0,180,216,0.3);">
-        ASSEMBLY SLOTS
+       <div class="position-display">
+        <div>
+         Height: <span id="current-height" class="font-bold">0.0</span>m
+        </div>
+        <div>
+         X Pos: <span id="current-x" class="font-bold">0.0</span>
+        </div>
+        <div>
+         Z Pos: <span id="current-z" class="font-bold">0.0</span>
+        </div>
+       </div>
+       <div class="grid grid-cols-3 gap-1">
+        <div></div><button id="move-up-btn" class="combat-btn font-orbitron px-3 py-2 rounded text-xs font-bold" style="background: linear-gradient(135deg, #0077b6, #023e8a); color: #fff; border: 2px solid #0077b6;"> ▲ </button>
+        <div></div><button id="move-left-btn" class="combat-btn font-orbitron px-3 py-2 rounded text-xs font-bold" style="background: linear-gradient(135deg, #0077b6, #023e8a); color: #fff; border: 2px solid #0077b6;"> ◄ </button> <button id="move-down-btn" class="combat-btn font-orbitron px-3 py-2 rounded text-xs font-bold" style="background: linear-gradient(135deg, #0077b6, #023e8a); color: #fff; border: 2px solid #0077b6;"> ▼ </button> <button id="move-right-btn" class="combat-btn font-orbitron px-3 py-2 rounded text-xs font-bold" style="background: linear-gradient(135deg, #0077b6, #023e8a); color: #fff; border: 2px solid #0077b6;"> ► </button>
+        <div></div><button id="move-forward-btn" class="combat-btn font-orbitron px-3 py-2 rounded text-xs font-bold" style="background: linear-gradient(135deg, #0077b6, #023e8a); color: #fff; border: 2px solid #0077b6;"> ↑ </button> <button id="move-back-btn" class="combat-btn font-orbitron px-3 py-2 rounded text-xs font-bold" style="background: linear-gradient(135deg, #0077b6, #023e8a); color: #fff; border: 2px solid #0077b6;"> ↓ </button>
+       </div><button id="weld-btn" class="combat-btn w-full font-orbitron px-4 py-3 rounded-lg text-sm font-bold disabled:opacity-50" style="background: linear-gradient(135deg, #ffc300, #ffb700); color: #000814; border: 2px solid #ffd60a;"> ⚡ WELD PART </button> <button id="clear-jaeger-btn" class="combat-btn w-full font-teko px-4 py-2 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #6c757d, #495057); color: #fff; border: 2px solid #6c757d;"> 🔄 RESET ALL </button>
+      </div><!-- Keyboard Hints -->
+      <div class="absolute bottom-4 left-4" style="background: rgba(0,0,0,0.85); padding: 12px; border-radius: 8px; border: 2px solid rgba(0,180,216,0.4);">
+       <div class="font-orbitron text-xs mb-2" style="color: #00b4d8;">
+        ⌨️ KEYBOARD CONTROLS
+       </div>
+       <div class="font-teko text-xs space-y-1" style="color: #90e0ef;">
+        <div>
+         ↑↓ - Move Up/Down
+        </div>
+        <div>
+         ←→ - Move Left/Right
+        </div>
+        <div>
+         W/S - Move Forward/Back
+        </div>
+        <div>
+         SPACE - Weld Part
+        </div>
        </div>
       </div>
      </div>
@@ -172,7 +180,7 @@
       <div class="absolute bottom-4 left-0 right-0 p-4">
        <div class="max-w-4xl mx-auto">
         <div class="font-orbitron text-xs text-center mb-2" style="color: #90e0ef;">
-         🎮 WASD to move • SPACE to attack • Q/E to rotate
+         🎮 CLICK to enable • WASD to move • MOUSE to look • LEFT CLICK sword • RIGHT CLICK plasma
         </div>
         <div class="grid grid-cols-3 gap-3"><button id="attack-punch-btn" class="combat-btn font-orbitron px-6 py-4 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #fb5607, #ff006e); color: #fff; border: 2px solid #fb5607;"> 👊 PUNCH [1]<br><span class="text-xs opacity-75">DMG: 15-25</span> </button> <button id="attack-plasma-btn" class="combat-btn font-orbitron px-6 py-4 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #00b4d8, #0077b6); color: #fff; border: 2px solid #00b4d8;"> ⚡ PLASMA [2]<br><span class="text-xs opacity-75">DMG: 20-35</span> </button> <button id="attack-sword-btn" class="combat-btn font-orbitron px-6 py-4 rounded-lg text-sm font-bold" style="background: linear-gradient(135deg, #ffc300, #ffb700); color: #000814; border: 2px solid #ffc300;"> ⚔️ BLADE [3]<br><span class="text-xs opacity-75">DMG: 25-40</span> </button>
         </div>
@@ -205,10 +213,9 @@
    </div>
   </div>
   <script>
-    // Default configuration
     const defaultConfig = {
       game_title: '⚔️ JAEGER CONSTRUCTOR',
-      instruction_text: 'Build your mech • Weld parts vertically • Deploy to combat!',
+      instruction_text: 'Build your mech • Move parts with arrows • Weld to attach!',
       build_mode_label: '🔧 BUILD',
       combat_mode_label: '⚔️ COMBAT',
       background_color: '#000814',
@@ -221,31 +228,25 @@
     };
 
     let config = { ...defaultConfig };
-
-    // Game state
     let currentMode = 'build';
     let selectedPartType = null;
     let tempPart = null;
     let currentHeight = 0;
+    let currentX = 0;
+    let currentZ = 0;
     let weldedParts = [];
     let jaegerStats = { power: 0, armor: 0, speed: 0 };
-    
-    // Combat state
     let playerHP = 100;
     let enemyHP = 150;
     let battleLog = [];
-    let isPlayerTurn = true;
     let combatInProgress = false;
     let keys = {};
     let playerPosition = { x: -8, z: 0 };
     let playerRotation = 0;
-
-    // Three.js scenes
     let buildScene, buildCamera, buildRenderer;
     let combatScene, combatCamera, combatRenderer;
     let playerJaeger, enemyKaiju;
 
-    // Part definitions
     const partTypes = [
       { id: 'legs', name: 'LEGS', emoji: '🦿', color: 0x00b4d8, power: 15, armor: 25, speed: 10, height: 0 },
       { id: 'lower-body', name: 'LOWER BODY', emoji: '🔩', color: 0x0077b6, power: 20, armor: 30, speed: 5, height: 2 },
@@ -257,95 +258,107 @@
       { id: 'weapon-r', name: 'RIGHT WEAPON', emoji: '🔫', color: 0xd62828, power: 35, armor: 10, speed: 10, height: 7 }
     ];
 
-    // Initialize Build Mode
     function initBuildMode() {
       const container = document.getElementById('build-canvas');
-      
       buildScene = new THREE.Scene();
       buildScene.background = new THREE.Color(0x000814);
       buildScene.fog = new THREE.Fog(0x000814, 10, 50);
-      
       buildCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
       buildCamera.position.set(8, 6, 12);
       buildCamera.lookAt(0, 4, 0);
-      
       buildRenderer = new THREE.WebGLRenderer({ antialias: true });
       buildRenderer.setSize(container.clientWidth, container.clientHeight);
       buildRenderer.shadowMap.enabled = true;
+      buildRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(buildRenderer.domElement);
       
-      // Lights
-      const ambientLight = new THREE.AmbientLight(0x404060, 0.4);
+      const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
       buildScene.add(ambientLight);
-      
-      const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
       mainLight.position.set(10, 15, 10);
       mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 2048;
+      mainLight.shadow.mapSize.height = 2048;
       buildScene.add(mainLight);
-      
-      const blueLight = new THREE.PointLight(0x00b4d8, 1, 30);
+      const blueLight = new THREE.PointLight(0x00b4d8, 1.5, 30);
       blueLight.position.set(-5, 5, 5);
       buildScene.add(blueLight);
-      
-      const orangeLight = new THREE.PointLight(0xffc300, 0.8, 25);
+      const orangeLight = new THREE.PointLight(0xffc300, 1.2, 25);
       orangeLight.position.set(5, 3, -5);
       buildScene.add(orangeLight);
-      
-      // Grid floor
+      const rimLight = new THREE.DirectionalLight(0x48cae4, 0.6);
+      rimLight.position.set(-10, 5, -10);
+      buildScene.add(rimLight);
       const gridHelper = new THREE.GridHelper(30, 30, 0x00b4d8, 0x003566);
       buildScene.add(gridHelper);
-      
-      // Platform
       const platformGeom = new THREE.CylinderGeometry(6, 6, 0.3, 32);
       const platformMat = new THREE.MeshStandardMaterial({ 
         color: 0x023e8a,
-        metalness: 0.8,
+        metalness: 0.9,
         roughness: 0.2,
         emissive: 0x00b4d8,
-        emissiveIntensity: 0.1
+        emissiveIntensity: 0.15
       });
       const platform = new THREE.Mesh(platformGeom, platformMat);
       platform.receiveShadow = true;
       buildScene.add(platform);
-      
       animateBuild();
     }
 
-    // Initialize Combat Mode
+    let mouseX = 0;
+    let mouseY = 0;
+    let cameraYaw = 0;
+    let cameraPitch = 0;
+
     function initCombatMode() {
       const container = document.getElementById('combat-canvas');
-      
       combatScene = new THREE.Scene();
       combatScene.background = new THREE.Color(0x001d3d);
       combatScene.fog = new THREE.Fog(0x001d3d, 15, 60);
-      
-      combatCamera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
-      combatCamera.position.set(0, 8, 20);
-      combatCamera.lookAt(0, 5, 0);
-      
+      combatCamera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+      combatCamera.position.set(-8, 6, 5);
       combatRenderer = new THREE.WebGLRenderer({ antialias: true });
       combatRenderer.setSize(container.clientWidth, container.clientHeight);
       combatRenderer.shadowMap.enabled = true;
       container.appendChild(combatRenderer.domElement);
       
-      // Dramatic combat lighting
+      // Pointer lock for mouse control
+      container.addEventListener('click', () => {
+        if (currentMode === 'combat' && combatInProgress) {
+          container.requestPointerLock();
+        }
+      });
+      
+      document.addEventListener('pointerlockchange', () => {
+        if (document.pointerLockElement === container) {
+          addBattleLog('🎮 Mouse controls active!', '#00b4d8');
+        }
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (document.pointerLockElement === container) {
+          mouseX = e.movementX || 0;
+          mouseY = e.movementY || 0;
+          cameraYaw -= mouseX * 0.002;
+          cameraPitch -= mouseY * 0.002;
+          cameraPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, cameraPitch));
+        }
+      });
+      
+      container.appendChild(combatRenderer.domElement);
+      
       const ambientLight = new THREE.AmbientLight(0x202040, 0.3);
       combatScene.add(ambientLight);
-      
       const spotLight = new THREE.SpotLight(0xffffff, 1.5);
       spotLight.position.set(0, 20, 0);
       spotLight.castShadow = true;
       combatScene.add(spotLight);
-      
       const redLight = new THREE.PointLight(0xe63946, 1.2, 30);
       redLight.position.set(10, 5, 0);
       combatScene.add(redLight);
-      
       const blueLight = new THREE.PointLight(0x00b4d8, 1.2, 30);
       blueLight.position.set(-10, 5, 0);
       combatScene.add(blueLight);
-      
-      // Arena floor
       const floorGeom = new THREE.PlaneGeometry(50, 50);
       const floorMat = new THREE.MeshStandardMaterial({ 
         color: 0x001d3d,
@@ -356,7 +369,6 @@
       floor.rotation.x = -Math.PI / 2;
       floor.receiveShadow = true;
       combatScene.add(floor);
-      
       animateCombat();
     }
 
@@ -365,46 +377,32 @@
       if (!part) return null;
       
       // Ultra-realistic materials
-      const battleSteelMaterial = new THREE.MeshStandardMaterial({
+      const battleSteelMat = new THREE.MeshStandardMaterial({
         color: part.color,
-        metalness: 0.95,
-        roughness: 0.25,
+        metalness: 0.98,
+        roughness: 0.15,
         emissive: part.color,
-        emissiveIntensity: 0.15
+        emissiveIntensity: 0.2
       });
       
-      const carbonFiberMaterial = new THREE.MeshStandardMaterial({
+      const carbonFiberMat = new THREE.MeshStandardMaterial({
         color: 0x0a0a0a,
-        metalness: 0.7,
-        roughness: 0.4
-      });
-      
-      const titaniumMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2c2c3e,
-        metalness: 0.9,
-        roughness: 0.3
-      });
-      
-      const hydraulicMaterial = new THREE.MeshStandardMaterial({
-        color: 0x1a1a2e,
-        metalness: 0.85,
+        metalness: 0.75,
         roughness: 0.35
       });
       
-      const glowCoreMaterial = new THREE.MeshStandardMaterial({
-        color: part.color,
-        emissive: part.color,
-        emissiveIntensity: 0.9,
-        metalness: 0.6,
-        roughness: 0.2
+      const titaniumMat = new THREE.MeshStandardMaterial({
+        color: 0x3c3c4e,
+        metalness: 0.95,
+        roughness: 0.25
       });
       
-      const armorPlatingMaterial = new THREE.MeshStandardMaterial({
+      const glowCoreMat = new THREE.MeshStandardMaterial({
         color: part.color,
-        metalness: 0.9,
-        roughness: 0.15,
         emissive: part.color,
-        emissiveIntensity: 0.05
+        emissiveIntensity: 1.2,
+        metalness: 0.7,
+        roughness: 0.15
       });
       
       let mesh;
@@ -413,150 +411,138 @@
         case 'legs':
           const legGroup = new THREE.Group();
           
-          // HIP ASSEMBLY - Realistic joint system
-          const hipJointGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 32);
-          const hipJoint = new THREE.Mesh(hipJointGeom, titaniumMaterial);
-          hipJoint.position.y = 0.8;
-          hipJoint.rotation.z = Math.PI / 2;
-          legGroup.add(hipJoint);
+          // Hip assembly - wider and more angular
+          const hipGeom = new THREE.BoxGeometry(3.2, 0.8, 1.6);
+          const hip = new THREE.Mesh(hipGeom, battleSteelMat);
+          hip.position.y = 0.8;
+          legGroup.add(hip);
           
-          const hipPlateGeom = new THREE.BoxGeometry(2.8, 0.6, 1.4);
-          const hipPlate = new THREE.Mesh(hipPlateGeom, armorPlatingMaterial);
-          hipPlate.position.y = 0.8;
+          // Hip armor plates
+          const hipPlateGeom = new THREE.BoxGeometry(3.4, 0.3, 1.8);
+          const hipPlate = new THREE.Mesh(hipPlateGeom, titaniumMat);
+          hipPlate.position.y = 1.05;
           legGroup.add(hipPlate);
           
-          // Hip armor details
+          // Left and right legs - Striker Eureka style
           for (let side = -1; side <= 1; side += 2) {
-            const hipArmorGeom = new THREE.BoxGeometry(0.8, 0.5, 0.3);
-            const hipArmor = new THREE.Mesh(hipArmorGeom, battleSteelMaterial);
-            hipArmor.position.set(side * 1.2, 0.8, 0.7);
-            legGroup.add(hipArmor);
-          }
-          
-          // LEFT AND RIGHT LEGS - Ultra detailed
-          for (let side = -1; side <= 1; side += 2) {
-            const xPos = side * 0.8;
+            const xPos = side * 1.0;
             
-            // THIGH ASSEMBLY
-            // Main thigh structure
-            const thighUpperGeom = new THREE.CylinderGeometry(0.45, 0.42, 0.8, 16);
-            const thighUpper = new THREE.Mesh(thighUpperGeom, armorPlatingMaterial);
-            thighUpper.position.set(xPos, 0.2, 0);
-            legGroup.add(thighUpper);
+            // Upper thigh joint
+            const upperJointGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 8);
+            const upperJoint = new THREE.Mesh(upperJointGeom, glowCoreMat);
+            upperJoint.position.set(xPos, 0.4, 0);
+            legGroup.add(upperJoint);
             
-            // Thigh armor plates
-            const thighArmorGeom = new THREE.BoxGeometry(0.6, 0.9, 0.5);
-            const thighArmor = new THREE.Mesh(thighArmorGeom, battleSteelMaterial);
-            thighArmor.position.set(xPos, 0.2, 0.3);
-            legGroup.add(thighArmor);
+            // Thigh - angular hexagonal prism
+            const thighGeom = new THREE.CylinderGeometry(0.48, 0.45, 0.9, 6);
+            const thigh = new THREE.Mesh(thighGeom, battleSteelMat);
+            thigh.position.set(xPos, 0, 0);
+            thigh.rotation.y = Math.PI / 6;
+            legGroup.add(thigh);
             
-            // Hydraulic pistons on thigh
-            for (let i = 0; i < 2; i++) {
-              const pistonGeom = new THREE.CylinderGeometry(0.08, 0.08, 0.7, 8);
-              const piston = new THREE.Mesh(pistonGeom, hydraulicMaterial);
-              piston.position.set(xPos + (i === 0 ? -0.25 : 0.25), 0.2, -0.2);
-              legGroup.add(piston);
-              
-              // Piston caps
-              const capGeom = new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8);
-              const cap1 = new THREE.Mesh(capGeom, titaniumMaterial);
-              cap1.position.set(xPos + (i === 0 ? -0.25 : 0.25), 0.55, -0.2);
-              const cap2 = new THREE.Mesh(capGeom, titaniumMaterial);
-              cap2.position.set(xPos + (i === 0 ? -0.25 : 0.25), -0.15, -0.2);
-              legGroup.add(cap1, cap2);
-            }
+            // Thigh armor plates - multiple angular pieces
+            const frontPlateGeom = new THREE.BoxGeometry(0.7, 1.0, 0.25);
+            const frontPlate = new THREE.Mesh(frontPlateGeom, titaniumMat);
+            frontPlate.position.set(xPos, 0, 0.4);
+            frontPlate.rotation.x = -0.1;
+            legGroup.add(frontPlate);
             
-            // KNEE JOINT - Multi-part articulated system
-            // Main knee housing
-            const kneeHousingGeom = new THREE.BoxGeometry(0.6, 0.4, 0.6);
-            const kneeHousing = new THREE.Mesh(kneeHousingGeom, titaniumMaterial);
-            kneeHousing.position.set(xPos, -0.4, 0);
-            legGroup.add(kneeHousing);
+            const sidePlateGeom = new THREE.BoxGeometry(0.3, 1.0, 0.6);
+            const sidePlate = new THREE.Mesh(sidePlateGeom, carbonFiberMat);
+            sidePlate.position.set(xPos + (side * 0.45), 0, 0);
+            legGroup.add(sidePlate);
             
-            // Knee joint sphere (ball joint)
-            const kneeBallGeom = new THREE.SphereGeometry(0.32, 24, 24);
-            const kneeBall = new THREE.Mesh(kneeBallGeom, glowCoreMaterial);
-            kneeBall.position.set(xPos, -0.4, 0);
-            legGroup.add(kneeBall);
+            // Knee joint - octagonal for more faces
+            const kneeGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.5, 8);
+            const knee = new THREE.Mesh(kneeGeom, glowCoreMat);
+            knee.position.set(xPos, -0.55, 0);
+            knee.rotation.z = Math.PI / 2;
+            legGroup.add(knee);
             
-            // Knee armor guards
-            const kneeGuardGeom = new THREE.SphereGeometry(0.38, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-            const kneeGuardFront = new THREE.Mesh(kneeGuardGeom, armorPlatingMaterial);
-            kneeGuardFront.position.set(xPos, -0.4, 0.2);
-            kneeGuardFront.rotation.x = Math.PI / 2;
-            legGroup.add(kneeGuardFront);
+            // Knee cap armor
+            const kneeCapGeom = new THREE.SphereGeometry(0.35, 8, 8, 0, Math.PI);
+            const kneeCap = new THREE.Mesh(kneeCapGeom, titaniumMat);
+            kneeCap.position.set(xPos, -0.55, 0.3);
+            kneeCap.rotation.x = Math.PI / 2;
+            legGroup.add(kneeCap);
             
-            // Knee hydraulics
-            const kneeHydraulicGeom = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 8);
-            const kneeHydraulic = new THREE.Mesh(kneeHydraulicGeom, hydraulicMaterial);
-            kneeHydraulic.position.set(xPos, -0.4, -0.3);
-            kneeHydraulic.rotation.x = Math.PI / 4;
-            legGroup.add(kneeHydraulic);
+            // Shin - hexagonal with taper
+            const shinGeom = new THREE.CylinderGeometry(0.45, 0.4, 1.2, 6);
+            const shin = new THREE.Mesh(shinGeom, battleSteelMat);
+            shin.position.set(xPos, -1.3, 0);
+            shin.rotation.y = Math.PI / 6;
+            legGroup.add(shin);
             
-            // SHIN ASSEMBLY
-            // Main shin structure
-            const shinMainGeom = new THREE.CylinderGeometry(0.42, 0.38, 1.1, 16);
-            const shinMain = new THREE.Mesh(shinMainGeom, armorPlatingMaterial);
-            shinMain.position.set(xPos, -1.15, 0);
-            legGroup.add(shinMain);
-            
-            // Shin front armor plate
-            const shinArmorGeom = new THREE.BoxGeometry(0.55, 1.2, 0.25);
-            const shinArmor = new THREE.Mesh(shinArmorGeom, battleSteelMaterial);
-            shinArmor.position.set(xPos, -1.15, 0.35);
+            // Shin front armor - angled plate
+            const shinArmorGeom = new THREE.BoxGeometry(0.65, 1.3, 0.2);
+            const shinArmor = new THREE.Mesh(shinArmorGeom, carbonFiberMat);
+            shinArmor.position.set(xPos, -1.3, 0.38);
+            shinArmor.rotation.x = -0.15;
             legGroup.add(shinArmor);
             
-            // Shin details - Vents
-            for (let v = 0; v < 3; v++) {
-              const ventGeom = new THREE.BoxGeometry(0.4, 0.15, 0.05);
-              const vent = new THREE.Mesh(ventGeom, carbonFiberMaterial);
-              vent.position.set(xPos, -1.5 + v * 0.35, 0.48);
-              legGroup.add(vent);
+            // Shin side plates
+            for (let angle = 0; angle < 2; angle++) {
+              const sideAngle = (angle === 0 ? 1 : -1) * side;
+              const shinSideGeom = new THREE.BoxGeometry(0.25, 1.25, 0.55);
+              const shinSide = new THREE.Mesh(shinSideGeom, titaniumMat);
+              shinSide.position.set(xPos + (sideAngle * 0.35), -1.3, 0);
+              legGroup.add(shinSide);
             }
             
-            // Calf hydraulics
-            const calfHydraulicGeom = new THREE.CylinderGeometry(0.09, 0.09, 0.9, 8);
-            const calfHydraulic = new THREE.Mesh(calfHydraulicGeom, hydraulicMaterial);
-            calfHydraulic.position.set(xPos, -1.15, -0.3);
-            legGroup.add(calfHydraulic);
+            // Ankle joint - octagonal
+            const ankleGeom = new THREE.CylinderGeometry(0.3, 0.3, 0.35, 8);
+            const ankle = new THREE.Mesh(ankleGeom, glowCoreMat);
+            ankle.position.set(xPos, -1.95, 0);
+            ankle.rotation.z = Math.PI / 2;
+            legGroup.add(ankle);
             
-            // ANKLE JOINT
-            const ankleJointGeom = new THREE.SphereGeometry(0.25, 20, 20);
-            const ankleJoint = new THREE.Mesh(ankleJointGeom, titaniumMaterial);
-            ankleJoint.position.set(xPos, -1.75, 0);
-            legGroup.add(ankleJoint);
+            // Foot - angular and geometric like Striker Eureka
+            const footMainGeom = new THREE.BoxGeometry(0.75, 0.3, 1.3);
+            const footMain = new THREE.Mesh(footMainGeom, battleSteelMat);
+            footMain.position.set(xPos, -2.15, 0.35);
+            legGroup.add(footMain);
             
-            // Ankle stabilizers
-            const ankleStabilizerGeom = new THREE.BoxGeometry(0.5, 0.15, 0.5);
-            const ankleStabilizer = new THREE.Mesh(ankleStabilizerGeom, battleSteelMaterial);
-            ankleStabilizer.position.set(xPos, -1.75, 0);
-            legGroup.add(ankleStabilizer);
-            
-            // FOOT ASSEMBLY
-            // Foot base
-            const footBaseGeom = new THREE.BoxGeometry(0.65, 0.25, 1.1);
-            const footBase = new THREE.Mesh(footBaseGeom, armorPlatingMaterial);
-            footBase.position.set(xPos, -1.95, 0.25);
-            legGroup.add(footBase);
-            
-            // Heel
-            const heelGeom = new THREE.BoxGeometry(0.6, 0.3, 0.4);
-            const heel = new THREE.Mesh(heelGeom, titaniumMaterial);
-            heel.position.set(xPos, -2.0, -0.2);
-            legGroup.add(heel);
-            
-            // Toe section
-            const toeGeom = new THREE.BoxGeometry(0.55, 0.2, 0.5);
-            const toe = new THREE.Mesh(toeGeom, battleSteelMaterial);
-            toe.position.set(xPos, -2.05, 0.6);
+            // Toe section - angled
+            const toeGeom = new THREE.BoxGeometry(0.7, 0.25, 0.5);
+            const toe = new THREE.Mesh(toeGeom, titaniumMat);
+            toe.position.set(xPos, -2.2, 0.85);
+            toe.rotation.x = -0.2;
             legGroup.add(toe);
             
-            // Foot treads
-            for (let t = 0; t < 3; t++) {
-              const treadGeom = new THREE.BoxGeometry(0.5, 0.08, 0.15);
-              const tread = new THREE.Mesh(treadGeom, carbonFiberMaterial);
-              tread.position.set(xPos, -2.15, -0.1 + t * 0.3);
-              legGroup.add(tread);
+            // Heel block
+            const heelGeom = new THREE.BoxGeometry(0.7, 0.45, 0.5);
+            const heel = new THREE.Mesh(heelGeom, battleSteelMat);
+            heel.position.set(xPos, -2.15, -0.2);
+            legGroup.add(heel);
+            
+            // Heel stabilizer
+            const stabilizerGeom = new THREE.BoxGeometry(0.8, 0.2, 0.35);
+            const stabilizer = new THREE.Mesh(stabilizerGeom, carbonFiberMat);
+            stabilizer.position.set(xPos, -2.4, -0.25);
+            legGroup.add(stabilizer);
+            
+            // Hydraulic pistons - 3 per leg
+            for (let i = 0; i < 3; i++) {
+              const yTop = 0.3 - (i * 0.3);
+              const yBottom = -0.5 - (i * 0.35);
+              const zOffset = -0.25 + (i * 0.15);
+              
+              const pistonGeom = new THREE.CylinderGeometry(0.08, 0.08, 
+                Math.sqrt(Math.pow(yTop - yBottom, 2) + Math.pow(zOffset * 2, 2)), 8);
+              const piston = new THREE.Mesh(pistonGeom, glowCoreMat);
+              piston.position.set(xPos - (side * 0.3), (yTop + yBottom) / 2, zOffset);
+              const angle = Math.atan2(yTop - yBottom, zOffset);
+              piston.rotation.x = angle;
+              legGroup.add(piston);
+            }
+            
+            // Armor bolts details
+            for (let i = 0; i < 8; i++) {
+              const boltGeom = new THREE.CylinderGeometry(0.06, 0.06, 0.1, 6);
+              const bolt = new THREE.Mesh(boltGeom, titaniumMat);
+              bolt.position.set(xPos, -0.3 - (i * 0.25), 0.45);
+              bolt.rotation.x = Math.PI / 2;
+              legGroup.add(bolt);
             }
           }
           
@@ -566,46 +552,24 @@
         case 'lower-body':
           const lowerGroup = new THREE.Group();
           
-          // Main pelvis structure
-          const pelvisMainGeom = new THREE.BoxGeometry(2.8, 1.3, 1.6);
-          const pelvisMain = new THREE.Mesh(pelvisMainGeom, armorPlatingMaterial);
-          lowerGroup.add(pelvisMain);
+          // Pelvis
+          const pelvisGeom = new THREE.BoxGeometry(2.8, 1.3, 1.6);
+          const pelvis = new THREE.Mesh(pelvisGeom, battleSteelMat);
+          lowerGroup.add(pelvis);
           
-          // Front armor belt
-          const beltGeom = new THREE.BoxGeometry(2.9, 0.4, 0.3);
-          const belt = new THREE.Mesh(beltGeom, titaniumMaterial);
-          belt.position.set(0, 0.5, 0.85);
-          lowerGroup.add(belt);
-          
-          // Side armor plates
+          // Side armor
           for (let side = -1; side <= 1; side += 2) {
             const sideArmorGeom = new THREE.BoxGeometry(0.3, 1.1, 1.5);
-            const sideArmor = new THREE.Mesh(sideArmorGeom, battleSteelMaterial);
+            const sideArmor = new THREE.Mesh(sideArmorGeom, titaniumMat);
             sideArmor.position.set(side * 1.55, 0, 0);
             lowerGroup.add(sideArmor);
-            
-            // Side details
-            const detailGeom = new THREE.BoxGeometry(0.15, 0.8, 0.2);
-            for (let i = 0; i < 3; i++) {
-              const detail = new THREE.Mesh(detailGeom, carbonFiberMaterial);
-              detail.position.set(side * 1.6, 0, -0.5 + i * 0.5);
-              lowerGroup.add(detail);
-            }
           }
           
-          // Back armor
-          const backArmorGeom = new THREE.BoxGeometry(2.5, 0.9, 0.3);
-          const backArmor = new THREE.Mesh(backArmorGeom, battleSteelMaterial);
-          backArmor.position.set(0, 0, -0.9);
-          lowerGroup.add(backArmor);
-          
-          // Hydraulic connection points
-          for (let i = -1; i <= 1; i += 2) {
-            const connectorGeom = new THREE.CylinderGeometry(0.2, 0.2, 0.4, 12);
-            const connector = new THREE.Mesh(connectorGeom, hydraulicMaterial);
-            connector.position.set(i * 1.0, -0.5, 0);
-            lowerGroup.add(connector);
-          }
+          // Belt
+          const beltGeom = new THREE.BoxGeometry(2.9, 0.4, 0.3);
+          const belt = new THREE.Mesh(beltGeom, carbonFiberMat);
+          belt.position.set(0, 0.5, 0.85);
+          lowerGroup.add(belt);
           
           mesh = lowerGroup;
           break;
@@ -613,56 +577,42 @@
         case 'core':
           const coreGroup = new THREE.Group();
           
-          // Central reactor sphere
-          const reactorCoreGeom = new THREE.SphereGeometry(0.9, 32, 32);
-          const reactorCore = new THREE.Mesh(reactorCoreGeom, glowCoreMaterial);
-          coreGroup.add(reactorCore);
+          // Reactor core
+          const reactorGeom = new THREE.SphereGeometry(0.9, 32, 32);
+          const reactor = new THREE.Mesh(reactorGeom, glowCoreMat);
+          coreGroup.add(reactor);
           
-          // Inner energy rings
+          // Inner glow
+          const innerGeom = new THREE.SphereGeometry(0.7, 24, 24);
+          const innerMat = new THREE.MeshStandardMaterial({
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 1.5,
+            transparent: true,
+            opacity: 0.8
+          });
+          const inner = new THREE.Mesh(innerGeom, innerMat);
+          coreGroup.add(inner);
+          
+          // Energy rings
           for (let i = 0; i < 5; i++) {
-            const ringGeom = new THREE.TorusGeometry(0.95 + i * 0.12, 0.04, 12, 48);
-            const ring = new THREE.Mesh(ringGeom, armorPlatingMaterial);
+            const ringGeom = new THREE.TorusGeometry(0.95 + i * 0.12, 0.04, 12, 32);
+            const ring = new THREE.Mesh(ringGeom, titaniumMat);
             ring.rotation.x = Math.PI / 2;
             ring.rotation.z = (i * Math.PI) / 5;
-            ring.position.y = Math.sin(i) * 0.2;
             coreGroup.add(ring);
           }
           
-          // Outer containment cage
-          const cageGeom = new THREE.TorusGeometry(1.5, 0.08, 8, 6, Math.PI * 2);
-          for (let i = 0; i < 3; i++) {
-            const cage = new THREE.Mesh(cageGeom, titaniumMaterial);
-            cage.rotation.x = (i * Math.PI) / 3;
-            coreGroup.add(cage);
-          }
-          
-          // Energy conduits
+          // Conduits
           for (let i = 0; i < 8; i++) {
             const angle = (i * Math.PI * 2) / 8;
-            const conduitGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 8);
-            const conduit = new THREE.Mesh(conduitGeom, glowCoreMaterial);
+            const conduitGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 12);
+            const conduit = new THREE.Mesh(conduitGeom, glowCoreMat);
             conduit.position.x = Math.cos(angle) * 0.9;
             conduit.position.z = Math.sin(angle) * 0.9;
             conduit.rotation.z = Math.PI / 2;
             conduit.rotation.y = angle;
             coreGroup.add(conduit);
-            
-            // Conduit end caps
-            const capGeom = new THREE.SphereGeometry(0.12, 12, 12);
-            const cap = new THREE.Mesh(capGeom, armorPlatingMaterial);
-            cap.position.x = Math.cos(angle) * 1.5;
-            cap.position.z = Math.sin(angle) * 1.5;
-            coreGroup.add(cap);
-          }
-          
-          // Support struts
-          for (let i = 0; i < 4; i++) {
-            const angle = (i * Math.PI * 2) / 4;
-            const strutGeom = new THREE.BoxGeometry(0.15, 2.5, 0.15);
-            const strut = new THREE.Mesh(strutGeom, carbonFiberMaterial);
-            strut.position.x = Math.cos(angle) * 1.2;
-            strut.position.z = Math.sin(angle) * 1.2;
-            coreGroup.add(strut);
           }
           
           mesh = coreGroup;
@@ -671,68 +621,39 @@
         case 'upper-body':
           const upperGroup = new THREE.Group();
           
-          // Main chest plate
-          const chestMainGeom = new THREE.BoxGeometry(3.0, 1.4, 1.9);
-          const chestMain = new THREE.Mesh(chestMainGeom, armorPlatingMaterial);
-          chestMain.position.y = 0.2;
-          upperGroup.add(chestMain);
+          // Chest plate
+          const chestGeom = new THREE.BoxGeometry(3.0, 1.4, 1.9);
+          const chest = new THREE.Mesh(chestGeom, battleSteelMat);
+          chest.position.y = 0.2;
+          upperGroup.add(chest);
           
-          // Chest armor layers
-          const chestArmorGeom = new THREE.BoxGeometry(2.8, 1.2, 0.3);
-          const chestArmor = new THREE.Mesh(chestArmorGeom, battleSteelMaterial);
-          chestArmor.position.set(0, 0.3, 1.0);
-          upperGroup.add(chestArmor);
+          // Front armor
+          const frontArmorGeom = new THREE.BoxGeometry(2.8, 1.2, 0.3);
+          const frontArmor = new THREE.Mesh(frontArmorGeom, titaniumMat);
+          frontArmor.position.set(0, 0.3, 1.0);
+          upperGroup.add(frontArmor);
           
-          // Pectoral armor plates
-          for (let side = -1; side <= 1; side += 2) {
-            const pecGeom = new THREE.BoxGeometry(0.9, 0.8, 0.25);
-            const pec = new THREE.Mesh(pecGeom, titaniumMaterial);
-            pec.position.set(side * 0.8, 0.4, 1.1);
-            upperGroup.add(pec);
-          }
-          
-          // Shoulder assembly
-          const shoulderPlateGeom = new THREE.BoxGeometry(3.8, 0.6, 1.6);
-          const shoulderPlate = new THREE.Mesh(shoulderPlateGeom, battleSteelMaterial);
-          shoulderPlate.position.y = 0.85;
-          upperGroup.add(shoulderPlate);
+          // Shoulders
+          const shoulderGeom = new THREE.BoxGeometry(3.8, 0.6, 1.6);
+          const shoulder = new THREE.Mesh(shoulderGeom, carbonFiberMat);
+          shoulder.position.y = 0.85;
+          upperGroup.add(shoulder);
           
           // Shoulder caps
           for (let side = -1; side <= 1; side += 2) {
             const capGeom = new THREE.SphereGeometry(0.5, 20, 20, 0, Math.PI);
-            const cap = new THREE.Mesh(capGeom, armorPlatingMaterial);
+            const cap = new THREE.Mesh(capGeom, battleSteelMat);
             cap.position.set(side * 1.7, 0.85, 0);
             cap.rotation.z = side * Math.PI / 2;
             upperGroup.add(cap);
-            
-            // Shoulder hydraulics
-            const shoulderHydraulicGeom = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 12);
-            const shoulderHydraulic = new THREE.Mesh(shoulderHydraulicGeom, hydraulicMaterial);
-            shoulderHydraulic.position.set(side * 1.5, 0.6, 0);
-            shoulderHydraulic.rotation.z = side * Math.PI / 6;
-            upperGroup.add(shoulderHydraulic);
           }
           
-          // Chest vents - detailed cooling system
+          // Chest vents
           for (let i = -2; i <= 2; i++) {
-            const ventMainGeom = new THREE.BoxGeometry(0.25, 0.9, 0.12);
-            const ventMain = new THREE.Mesh(ventMainGeom, carbonFiberMaterial);
-            ventMain.position.set(i * 0.4, 0.2, 1.0);
-            upperGroup.add(ventMain);
-            
-            // Vent glow
-            const ventGlowGeom = new THREE.BoxGeometry(0.2, 0.85, 0.08);
-            const ventGlow = new THREE.Mesh(ventGlowGeom, glowCoreMaterial);
-            ventGlow.position.set(i * 0.4, 0.2, 1.05);
-            upperGroup.add(ventGlow);
-          }
-          
-          // Back structural supports
-          for (let i = -1; i <= 1; i++) {
-            const backSupportGeom = new THREE.BoxGeometry(0.3, 1.3, 0.25);
-            const backSupport = new THREE.Mesh(backSupportGeom, titaniumMaterial);
-            backSupport.position.set(i * 0.9, 0.2, -1.0);
-            upperGroup.add(backSupport);
+            const ventGeom = new THREE.BoxGeometry(0.2, 0.85, 0.08);
+            const vent = new THREE.Mesh(ventGeom, glowCoreMat);
+            vent.position.set(i * 0.4, 0.2, 1.05);
+            upperGroup.add(vent);
           }
           
           mesh = upperGroup;
@@ -741,133 +662,52 @@
         case 'arms':
           const armGroup = new THREE.Group();
           
-          // LEFT AND RIGHT ARMS
           for (let side = -1; side <= 1; side += 2) {
             const xBase = side * 2.1;
             
-            // SHOULDER JOINT - Complex ball joint
-            const shoulderBallGeom = new THREE.SphereGeometry(0.45, 24, 24);
-            const shoulderBall = new THREE.Mesh(shoulderBallGeom, glowCoreMaterial);
-            shoulderBall.position.set(xBase, 0, 0);
-            armGroup.add(shoulderBall);
+            // Shoulder joint
+            const shoulderGeom = new THREE.SphereGeometry(0.45, 24, 24);
+            const shoulder = new THREE.Mesh(shoulderGeom, glowCoreMat);
+            shoulder.position.set(xBase, 0, 0);
+            armGroup.add(shoulder);
             
-            // Shoulder housing
-            const shoulderHousingGeom = new THREE.SphereGeometry(0.52, 20, 20, 0, Math.PI * 2, 0, Math.PI / 1.5);
-            const shoulderHousing = new THREE.Mesh(shoulderHousingGeom, armorPlatingMaterial);
-            shoulderHousing.position.set(xBase, 0.1, 0);
-            armGroup.add(shoulderHousing);
-            
-            // Shoulder armor pauldron
-            const pauldronGeom = new THREE.BoxGeometry(0.7, 0.6, 0.7);
-            const pauldron = new THREE.Mesh(pauldronGeom, battleSteelMaterial);
-            pauldron.position.set(xBase, 0.35, 0);
-            armGroup.add(pauldron);
-            
-            // UPPER ARM
-            // Main upper arm structure
+            // Upper arm
             const upperArmGeom = new THREE.CylinderGeometry(0.38, 0.35, 1.6, 16);
-            const upperArm = new THREE.Mesh(upperArmGeom, armorPlatingMaterial);
+            const upperArm = new THREE.Mesh(upperArmGeom, battleSteelMat);
             upperArm.position.set(xBase + side * 0.35, -0.75, 0);
             upperArm.rotation.z = side * Math.PI / 6;
             armGroup.add(upperArm);
             
-            // Upper arm armor shell
-            const upperArmArmorGeom = new THREE.BoxGeometry(0.5, 1.5, 0.5);
-            const upperArmArmor = new THREE.Mesh(upperArmArmorGeom, battleSteelMaterial);
-            upperArmArmor.position.set(xBase + side * 0.35, -0.75, 0.3);
-            upperArmArmor.rotation.z = side * Math.PI / 6;
-            armGroup.add(upperArmArmor);
+            // Elbow
+            const elbowGeom = new THREE.SphereGeometry(0.28, 20, 20);
+            const elbow = new THREE.Mesh(elbowGeom, glowCoreMat);
+            elbow.position.set(xBase + side * 0.9, -1.6, 0);
+            armGroup.add(elbow);
             
-            // Bicep hydraulics
-            for (let i = 0; i < 2; i++) {
-              const bicepHydraulicGeom = new THREE.CylinderGeometry(0.09, 0.09, 1.3, 8);
-              const bicepHydraulic = new THREE.Mesh(bicepHydraulicGeom, hydraulicMaterial);
-              bicepHydraulic.position.set(xBase + side * 0.35, -0.75, -0.25 + i * 0.1);
-              bicepHydraulic.rotation.z = side * Math.PI / 6;
-              armGroup.add(bicepHydraulic);
-            }
-            
-            // ELBOW JOINT
-            const elbowPos = { x: xBase + side * 0.9, y: -1.6, z: 0 };
-            
-            // Elbow housing
-            const elbowHousingGeom = new THREE.BoxGeometry(0.55, 0.45, 0.55);
-            const elbowHousing = new THREE.Mesh(elbowHousingGeom, titaniumMaterial);
-            elbowHousing.position.set(elbowPos.x, elbowPos.y, elbowPos.z);
-            armGroup.add(elbowHousing);
-            
-            // Elbow joint sphere
-            const elbowJointGeom = new THREE.SphereGeometry(0.28, 20, 20);
-            const elbowJoint = new THREE.Mesh(elbowJointGeom, glowCoreMaterial);
-            elbowJoint.position.set(elbowPos.x, elbowPos.y, elbowPos.z);
-            armGroup.add(elbowJoint);
-            
-            // Elbow armor guards
-            const elbowGuardGeom = new THREE.BoxGeometry(0.4, 0.3, 0.6);
-            const elbowGuardFront = new THREE.Mesh(elbowGuardGeom, armorPlatingMaterial);
-            elbowGuardFront.position.set(elbowPos.x, elbowPos.y, elbowPos.z + 0.3);
-            armGroup.add(elbowGuardFront);
-            
-            // FOREARM
-            const forearmPos = { x: xBase + side * 1.4, y: -2.35, z: 0 };
-            
-            // Main forearm structure
+            // Forearm
             const forearmGeom = new THREE.CylinderGeometry(0.35, 0.38, 1.5, 16);
-            const forearm = new THREE.Mesh(forearmGeom, armorPlatingMaterial);
-            forearm.position.set(forearmPos.x, forearmPos.y, forearmPos.z);
+            const forearm = new THREE.Mesh(forearmGeom, battleSteelMat);
+            forearm.position.set(xBase + side * 1.4, -2.35, 0);
             forearm.rotation.z = side * Math.PI / 8;
             armGroup.add(forearm);
             
-            // Forearm armor plating
-            const forearmArmorGeom = new THREE.BoxGeometry(0.48, 1.4, 0.45);
-            const forearmArmor = new THREE.Mesh(forearmArmorGeom, battleSteelMaterial);
-            forearmArmor.position.set(forearmPos.x, forearmPos.y, forearmPos.z + 0.3);
-            forearmArmor.rotation.z = side * Math.PI / 8;
-            armGroup.add(forearmArmor);
+            // Wrist
+            const wristGeom = new THREE.CylinderGeometry(0.25, 0.25, 0.3, 16);
+            const wrist = new THREE.Mesh(wristGeom, titaniumMat);
+            wrist.position.set(xBase + side * 1.75, -3.1, 0);
+            wrist.rotation.z = Math.PI / 2;
+            armGroup.add(wrist);
             
-            // Forearm details - vents
-            for (let v = 0; v < 3; v++) {
-              const ventGeom = new THREE.BoxGeometry(0.35, 0.12, 0.08);
-              const vent = new THREE.Mesh(ventGeom, carbonFiberMaterial);
-              vent.position.set(forearmPos.x, forearmPos.y - 0.5 + v * 0.3, forearmPos.z + 0.42);
-              vent.rotation.z = side * Math.PI / 8;
-              armGroup.add(vent);
-            }
-            
-            // WRIST JOINT
-            const wristPos = { x: xBase + side * 1.75, y: -3.1, z: 0 };
-            
-            const wristJointGeom = new THREE.CylinderGeometry(0.25, 0.25, 0.3, 16);
-            const wristJoint = new THREE.Mesh(wristJointGeom, titaniumMaterial);
-            wristJoint.position.set(wristPos.x, wristPos.y, wristPos.z);
-            wristJoint.rotation.z = Math.PI / 2;
-            armGroup.add(wristJoint);
-            
-            // HAND/FIST
-            // Palm
+            // Hand/Fist
             const palmGeom = new THREE.BoxGeometry(0.45, 0.55, 0.55);
-            const palm = new THREE.Mesh(palmGeom, armorPlatingMaterial);
-            palm.position.set(wristPos.x, wristPos.y - 0.35, wristPos.z);
+            const palm = new THREE.Mesh(palmGeom, battleSteelMat);
+            palm.position.set(xBase + side * 1.75, -3.45, 0);
             armGroup.add(palm);
             
-            // Knuckle guard
             const knuckleGeom = new THREE.BoxGeometry(0.5, 0.25, 0.6);
-            const knuckle = new THREE.Mesh(knuckleGeom, battleSteelMaterial);
-            knuckle.position.set(wristPos.x, wristPos.y - 0.55, wristPos.z);
+            const knuckle = new THREE.Mesh(knuckleGeom, titaniumMat);
+            knuckle.position.set(xBase + side * 1.75, -3.65, 0);
             armGroup.add(knuckle);
-            
-            // Fingers (simplified fist)
-            const fingerGeom = new THREE.BoxGeometry(0.35, 0.4, 0.5);
-            const fingers = new THREE.Mesh(fingerGeom, titaniumMaterial);
-            fingers.position.set(wristPos.x, wristPos.y - 0.75, wristPos.z);
-            armGroup.add(fingers);
-            
-            // Thumb
-            const thumbGeom = new THREE.BoxGeometry(0.15, 0.35, 0.2);
-            const thumb = new THREE.Mesh(thumbGeom, titaniumMaterial);
-            thumb.position.set(wristPos.x, wristPos.y - 0.6, wristPos.z + side * 0.35);
-            thumb.rotation.z = side * Math.PI / 4;
-            armGroup.add(thumb);
           }
           
           mesh = armGroup;
@@ -876,112 +716,52 @@
         case 'head':
           const headGroup = new THREE.Group();
           
-          // Main helmet structure
-          const helmetMainGeom = new THREE.BoxGeometry(1.3, 1.1, 1.3);
-          const helmetMain = new THREE.Mesh(helmetMainGeom, armorPlatingMaterial);
-          helmetMain.position.y = 0.25;
-          headGroup.add(helmetMain);
+          // Helmet
+          const helmetGeom = new THREE.BoxGeometry(1.3, 1.1, 1.3);
+          const helmet = new THREE.Mesh(helmetGeom, battleSteelMat);
+          helmet.position.y = 0.25;
+          headGroup.add(helmet);
           
           // Faceplate
           const faceplateGeom = new THREE.BoxGeometry(1.2, 0.9, 0.25);
-          const faceplate = new THREE.Mesh(faceplateGeom, battleSteelMaterial);
+          const faceplate = new THREE.Mesh(faceplateGeom, carbonFiberMat);
           faceplate.position.set(0, 0.3, 0.65);
           headGroup.add(faceplate);
           
-          // VISOR - Multi-layer design
-          const visorMainGeom = new THREE.BoxGeometry(1.15, 0.45, 0.15);
-          const visorMainMat = new THREE.MeshStandardMaterial({
+          // Visor
+          const visorGeom = new THREE.BoxGeometry(1.15, 0.45, 0.15);
+          const visorMat = new THREE.MeshStandardMaterial({
             color: 0x00ffff,
             emissive: 0x00ffff,
-            emissiveIntensity: 1.2,
-            metalness: 0.95,
-            roughness: 0.05,
+            emissiveIntensity: 1.5,
+            metalness: 0.98,
+            roughness: 0.02,
             transparent: true,
-            opacity: 0.9
+            opacity: 0.95
           });
-          const visorMain = new THREE.Mesh(visorMainGeom, visorMainMat);
-          visorMain.position.set(0, 0.35, 0.72);
-          headGroup.add(visorMain);
+          const visor = new THREE.Mesh(visorGeom, visorMat);
+          visor.position.set(0, 0.35, 0.72);
+          headGroup.add(visor);
           
-          // Visor segments
-          for (let i = -2; i <= 2; i++) {
-            const segmentGeom = new THREE.BoxGeometry(0.18, 0.4, 0.1);
-            const segment = new THREE.Mesh(segmentGeom, visorMainMat);
-            segment.position.set(i * 0.22, 0.35, 0.75);
-            headGroup.add(segment);
-          }
-          
-          // Visor frame
-          const frameGeom = new THREE.BoxGeometry(1.25, 0.55, 0.1);
-          const frame = new THREE.Mesh(frameGeom, titaniumMaterial);
-          frame.position.set(0, 0.35, 0.68);
-          headGroup.add(frame);
-          
-          // Jaw/chin guard
+          // Jaw guard
           const jawGeom = new THREE.BoxGeometry(1.0, 0.4, 0.9);
-          const jaw = new THREE.Mesh(jawGeom, armorPlatingMaterial);
+          const jaw = new THREE.Mesh(jawGeom, titaniumMat);
           jaw.position.set(0, -0.1, 0.4);
           headGroup.add(jaw);
           
-          // Side armor panels
+          // Side armor
           for (let side = -1; side <= 1; side += 2) {
-            const sideArmorGeom = new THREE.BoxGeometry(0.25, 0.9, 1.2);
-            const sideArmor = new THREE.Mesh(sideArmorGeom, battleSteelMaterial);
-            sideArmor.position.set(side * 0.65, 0.25, 0);
-            headGroup.add(sideArmor);
-            
-            // Side vents
-            for (let v = 0; v < 3; v++) {
-              const ventGeom = new THREE.BoxGeometry(0.15, 0.12, 0.3);
-              const vent = new THREE.Mesh(ventGeom, carbonFiberMaterial);
-              vent.position.set(side * 0.72, 0.1 + v * 0.25, 0.2);
-              headGroup.add(vent);
-            }
+            const sideGeom = new THREE.BoxGeometry(0.25, 0.9, 1.2);
+            const sidePanel = new THREE.Mesh(sideGeom, carbonFiberMat);
+            sidePanel.position.set(side * 0.65, 0.25, 0);
+            headGroup.add(sidePanel);
           }
           
-          // Top helmet crown
-          const crownGeom = new THREE.CylinderGeometry(0.75, 0.85, 0.5, 8);
-          const crown = new THREE.Mesh(crownGeom, battleSteelMaterial);
-          crown.position.y = 0.75;
-          headGroup.add(crown);
-          
-          // Crown armor panels
-          for (let i = 0; i < 8; i++) {
-            const angle = (i * Math.PI * 2) / 8;
-            const panelGeom = new THREE.BoxGeometry(0.2, 0.45, 0.1);
-            const panel = new THREE.Mesh(panelGeom, armorPlatingMaterial);
-            panel.position.set(Math.cos(angle) * 0.65, 0.75, Math.sin(angle) * 0.65);
-            panel.rotation.y = angle;
-            headGroup.add(panel);
-          }
-          
-          // Communication antenna array
-          const antennaBaseGeom = new THREE.CylinderGeometry(0.08, 0.12, 0.2, 8);
-          const antennaBase = new THREE.Mesh(antennaBaseGeom, titaniumMaterial);
-          antennaBase.position.y = 1.0;
-          headGroup.add(antennaBase);
-          
-          const antennaGeom = new THREE.CylinderGeometry(0.04, 0.06, 0.6, 8);
-          const antenna = new THREE.Mesh(antennaGeom, glowCoreMaterial);
-          antenna.position.y = 1.4;
+          // Antenna
+          const antennaGeom = new THREE.CylinderGeometry(0.04, 0.08, 0.6, 12);
+          const antenna = new THREE.Mesh(antennaGeom, glowCoreMat);
+          antenna.position.y = 1.1;
           headGroup.add(antenna);
-          
-          // Antenna tip
-          const antennaTipGeom = new THREE.SphereGeometry(0.08, 12, 12);
-          const antennaTip = new THREE.Mesh(antennaTipGeom, glowCoreMaterial);
-          antennaTip.position.y = 1.75;
-          headGroup.add(antennaTip);
-          
-          // Secondary antennas
-          for (let i = 0; i < 4; i++) {
-            const angle = (i * Math.PI * 2) / 4;
-            const subAntennaGeom = new THREE.CylinderGeometry(0.02, 0.03, 0.3, 6);
-            const subAntenna = new THREE.Mesh(subAntennaGeom, glowCoreMaterial);
-            subAntenna.position.set(Math.cos(angle) * 0.15, 1.15, Math.sin(angle) * 0.15);
-            subAntenna.rotation.z = Math.cos(angle) * 0.3;
-            subAntenna.rotation.x = Math.sin(angle) * 0.3;
-            headGroup.add(subAntenna);
-          }
           
           mesh = headGroup;
           break;
@@ -989,90 +769,45 @@
         case 'weapon-l':
           const weaponLGroup = new THREE.Group();
           
-          // PLASMA CANNON - Highly detailed
-          // Mounting bracket
-          const mountGeom = new THREE.CylinderGeometry(0.35, 0.4, 0.5, 12);
-          const mount = new THREE.Mesh(mountGeom, titaniumMaterial);
-          mount.position.y = -0.6;
-          weaponLGroup.add(mount);
+          // Plasma cannon base
+          const baseGeom = new THREE.CylinderGeometry(0.4, 0.45, 0.9, 16);
+          const base = new THREE.Mesh(baseGeom, battleSteelMat);
+          base.position.y = 0.1;
+          weaponLGroup.add(base);
           
-          // Connection joint
-          const jointGeom = new THREE.SphereGeometry(0.3, 16, 16);
-          const joint = new THREE.Mesh(jointGeom, hydraulicMaterial);
-          joint.position.y = -0.35;
-          weaponLGroup.add(joint);
-          
-          // Cannon base housing
-          const baseHousingGeom = new THREE.CylinderGeometry(0.4, 0.45, 0.9, 16);
-          const baseHousing = new THREE.Mesh(baseHousingGeom, armorPlatingMaterial);
-          baseHousing.position.y = 0.1;
-          weaponLGroup.add(baseHousing);
-          
-          // Power core chamber
-          const coreGeom = new THREE.SphereGeometry(0.35, 20, 20);
-          const core = new THREE.Mesh(coreGeom, glowCoreMaterial);
+          // Power core
+          const coreGeom = new THREE.SphereGeometry(0.35, 24, 24);
+          const core = new THREE.Mesh(coreGeom, glowCoreMat);
           core.position.y = 0.1;
           weaponLGroup.add(core);
           
-          // Outer barrel assembly
-          const outerBarrelGeom = new THREE.CylinderGeometry(0.32, 0.32, 1.3, 12);
-          const outerBarrel = new THREE.Mesh(outerBarrelGeom, battleSteelMaterial);
-          outerBarrel.position.y = 0.85;
-          weaponLGroup.add(outerBarrel);
+          // Barrel
+          const barrelGeom = new THREE.CylinderGeometry(0.32, 0.32, 1.3, 16);
+          const barrel = new THREE.Mesh(barrelGeom, titaniumMat);
+          barrel.position.y = 0.85;
+          weaponLGroup.add(barrel);
           
-          // Inner barrel (glowing)
-          const innerBarrelGeom = new THREE.CylinderGeometry(0.25, 0.25, 1.35, 12);
-          const innerBarrel = new THREE.Mesh(innerBarrelGeom, glowCoreMaterial);
+          // Inner barrel glow
+          const innerBarrelGeom = new THREE.CylinderGeometry(0.25, 0.25, 1.35, 16);
+          const innerBarrel = new THREE.Mesh(innerBarrelGeom, glowCoreMat);
           innerBarrel.position.y = 0.85;
           weaponLGroup.add(innerBarrel);
           
-          // Barrel cooling fins
+          // Cooling fins
           for (let i = 0; i < 6; i++) {
             const angle = (i * Math.PI * 2) / 6;
             const finGeom = new THREE.BoxGeometry(0.1, 1.2, 0.2);
-            const fin = new THREE.Mesh(finGeom, carbonFiberMaterial);
+            const fin = new THREE.Mesh(finGeom, carbonFiberMat);
             fin.position.set(Math.cos(angle) * 0.35, 0.85, Math.sin(angle) * 0.35);
             fin.rotation.y = angle;
             weaponLGroup.add(fin);
           }
           
-          // Barrel segments with detail
-          for (let s = 0; s < 4; s++) {
-            const segmentRingGeom = new THREE.TorusGeometry(0.33, 0.04, 8, 16);
-            const segmentRing = new THREE.Mesh(segmentRingGeom, titaniumMaterial);
-            segmentRing.position.y = 0.3 + s * 0.3;
-            segmentRing.rotation.x = Math.PI / 2;
-            weaponLGroup.add(segmentRing);
-          }
-          
-          // Muzzle assembly
-          const muzzleGeom = new THREE.CylinderGeometry(0.28, 0.35, 0.4, 12);
-          const muzzle = new THREE.Mesh(muzzleGeom, armorPlatingMaterial);
+          // Muzzle
+          const muzzleGeom = new THREE.CylinderGeometry(0.28, 0.35, 0.4, 16);
+          const muzzle = new THREE.Mesh(muzzleGeom, battleSteelMat);
           muzzle.position.y = 1.6;
           weaponLGroup.add(muzzle);
-          
-          // Muzzle interior glow
-          const muzzleGlowGeom = new THREE.CylinderGeometry(0.2, 0.28, 0.35, 12);
-          const muzzleGlow = new THREE.Mesh(muzzleGlowGeom, glowCoreMaterial);
-          muzzleGlow.position.y = 1.6;
-          weaponLGroup.add(muzzleGlow);
-          
-          // Charging coils around muzzle
-          for (let i = 0; i < 3; i++) {
-            const coilGeom = new THREE.TorusGeometry(0.32 + i * 0.05, 0.02, 8, 24);
-            const coil = new THREE.Mesh(coilGeom, glowCoreMaterial);
-            coil.position.y = 1.5 + i * 0.08;
-            coil.rotation.x = Math.PI / 2;
-            weaponLGroup.add(coil);
-          }
-          
-          // Side power conduits
-          for (let side = -1; side <= 1; side += 2) {
-            const conduitGeom = new THREE.CylinderGeometry(0.06, 0.06, 1.0, 8);
-            const conduit = new THREE.Mesh(conduitGeom, hydraulicMaterial);
-            conduit.position.set(side * 0.25, 0.6, 0);
-            weaponLGroup.add(conduit);
-          }
           
           mesh = weaponLGroup;
           break;
@@ -1080,114 +815,60 @@
         case 'weapon-r':
           const weaponRGroup = new THREE.Group();
           
-          // CHAIN SWORD - Maximum detail
-          // Handle grip
-          const gripGeom = new THREE.CylinderGeometry(0.16, 0.16, 0.9, 12);
-          const grip = new THREE.Mesh(gripGeom, carbonFiberMaterial);
+          // Chain sword grip
+          const gripGeom = new THREE.CylinderGeometry(0.16, 0.16, 0.9, 16);
+          const grip = new THREE.Mesh(gripGeom, carbonFiberMat);
           grip.position.y = -0.5;
           weaponRGroup.add(grip);
           
-          // Handle details
-          for (let i = 0; i < 5; i++) {
-            const gripRingGeom = new THREE.TorusGeometry(0.17, 0.03, 8, 12);
-            const gripRing = new THREE.Mesh(gripRingGeom, titaniumMaterial);
-            gripRing.position.y = -0.8 + i * 0.2;
-            gripRing.rotation.x = Math.PI / 2;
-            weaponRGroup.add(gripRing);
-          }
-          
           // Pommel
           const pommelGeom = new THREE.SphereGeometry(0.2, 16, 16);
-          const pommel = new THREE.Mesh(pommelGeom, armorPlatingMaterial);
+          const pommel = new THREE.Mesh(pommelGeom, titaniumMat);
           pommel.position.y = -0.95;
           weaponRGroup.add(pommel);
           
-          // Guard/crossguard
-          const guardMainGeom = new THREE.BoxGeometry(0.8, 0.15, 0.25);
-          const guardMain = new THREE.Mesh(guardMainGeom, battleSteelMaterial);
-          guardMain.position.y = -0.05;
-          weaponRGroup.add(guardMain);
+          // Guard
+          const guardGeom = new THREE.BoxGeometry(0.8, 0.15, 0.25);
+          const guard = new THREE.Mesh(guardGeom, battleSteelMat);
+          guard.position.y = -0.05;
+          weaponRGroup.add(guard);
           
-          // Guard ends
-          for (let side = -1; side <= 1; side += 2) {
-            const guardEndGeom = new THREE.BoxGeometry(0.15, 0.25, 0.2);
-            const guardEnd = new THREE.Mesh(guardEndGeom, armorPlatingMaterial);
-            guardEnd.position.set(side * 0.4, -0.05, 0);
-            weaponRGroup.add(guardEnd);
-          }
+          // Blade
+          const bladeGeom = new THREE.BoxGeometry(0.28, 1.3, 0.12);
+          const blade = new THREE.Mesh(bladeGeom, titaniumMat);
+          blade.position.y = 0.85;
+          weaponRGroup.add(blade);
           
-          // Blade base/emitter
-          const bladeBaseGeom = new THREE.BoxGeometry(0.35, 0.3, 0.2);
-          const bladeBase = new THREE.Mesh(bladeBaseGeom, titaniumMaterial);
-          bladeBase.position.y = 0.15;
-          weaponRGroup.add(bladeBase);
+          // Blade edge glow
+          const edgeGeom = new THREE.BoxGeometry(0.22, 1.35, 0.08);
+          const edge = new THREE.Mesh(edgeGeom, glowCoreMat);
+          edge.position.y = 0.85;
+          weaponRGroup.add(edge);
           
-          // Main blade structure
-          const bladeMainGeom = new THREE.BoxGeometry(0.28, 1.3, 0.12);
-          const bladeMain = new THREE.Mesh(bladeMainGeom, armorPlatingMaterial);
-          bladeMain.position.y = 0.85;
-          weaponRGroup.add(bladeMain);
-          
-          // Blade edge (glowing energy)
-          const bladeEdgeGeom = new THREE.BoxGeometry(0.22, 1.35, 0.08);
-          const bladeEdge = new THREE.Mesh(bladeEdgeGeom, glowCoreMaterial);
-          bladeEdge.position.y = 0.85;
-          weaponRGroup.add(bladeEdge);
-          
-          // Chain teeth details
+          // Chain teeth
           for (let i = 0; i < 12; i++) {
             const toothGeom = new THREE.BoxGeometry(0.25, 0.08, 0.04);
-            const tooth = new THREE.Mesh(toothGeom, battleSteelMaterial);
+            const tooth = new THREE.Mesh(toothGeom, carbonFiberMat);
             tooth.position.set(-0.15, 0.25 + i * 0.1, 0);
             weaponRGroup.add(tooth);
             
-            const toothR = new THREE.Mesh(toothGeom, battleSteelMaterial);
+            const toothR = new THREE.Mesh(toothGeom, carbonFiberMat);
             toothR.position.set(0.15, 0.25 + i * 0.1, 0);
             weaponRGroup.add(toothR);
           }
           
-          // Blade reinforcement ribs
-          for (let i = 0; i < 4; i++) {
-            const ribGeom = new THREE.BoxGeometry(0.3, 0.08, 0.15);
-            const rib = new THREE.Mesh(ribGeom, titaniumMaterial);
-            rib.position.y = 0.3 + i * 0.35;
-            weaponRGroup.add(rib);
-          }
-          
-          // Blade tip assembly
-          const tipBaseGeom = new THREE.BoxGeometry(0.28, 0.25, 0.12);
-          const tipBase = new THREE.Mesh(tipBaseGeom, armorPlatingMaterial);
-          tipBase.position.y = 1.55;
-          weaponRGroup.add(tipBase);
-          
-          // Pointed tip
+          // Tip
           const tipGeom = new THREE.ConeGeometry(0.16, 0.35, 4);
-          const tip = new THREE.Mesh(tipGeom, glowCoreMaterial);
-          tip.position.y = 1.85;
+          const tip = new THREE.Mesh(tipGeom, glowCoreMat);
+          tip.position.y = 1.65;
           weaponRGroup.add(tip);
-          
-          // Energy field emitters on blade sides
-          for (let side = -1; side <= 1; side += 2) {
-            for (let i = 0; i < 6; i++) {
-              const emitterGeom = new THREE.SphereGeometry(0.04, 8, 8);
-              const emitter = new THREE.Mesh(emitterGeom, glowCoreMaterial);
-              emitter.position.set(side * 0.16, 0.4 + i * 0.2, 0);
-              weaponRGroup.add(emitter);
-            }
-          }
-          
-          // Power cable from handle to blade
-          const cableGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8);
-          const cable = new THREE.Mesh(cableGeom, hydraulicMaterial);
-          cable.position.set(0.2, 0.15, 0);
-          weaponRGroup.add(cable);
           
           mesh = weaponRGroup;
           break;
           
         default:
           const defaultGeom = new THREE.BoxGeometry(1, 1, 1);
-          mesh = new THREE.Mesh(defaultGeom, battleSteelMaterial);
+          mesh = new THREE.Mesh(defaultGeom, battleSteelMat);
       }
       
       mesh.castShadow = true;
@@ -1207,13 +888,41 @@
     function createJaegerFromParts() {
       const jaegerGroup = new THREE.Group();
       
+      // Organize parts by type for articulated movement
+      jaegerGroup.userData.legs = null;
+      jaegerGroup.userData.lowerBody = null;
+      jaegerGroup.userData.core = null;
+      jaegerGroup.userData.upperBody = null;
+      jaegerGroup.userData.arms = null;
+      jaegerGroup.userData.head = null;
+      jaegerGroup.userData.weaponL = null;
+      jaegerGroup.userData.weaponR = null;
+      
       weldedParts.forEach(part => {
         const partMesh = part.clone();
+        const partType = partMesh.userData.partType;
+        
+        // Store references to each body part
+        if (partType === 'legs') jaegerGroup.userData.legs = partMesh;
+        else if (partType === 'lower-body') jaegerGroup.userData.lowerBody = partMesh;
+        else if (partType === 'core') jaegerGroup.userData.core = partMesh;
+        else if (partType === 'upper-body') jaegerGroup.userData.upperBody = partMesh;
+        else if (partType === 'arms') jaegerGroup.userData.arms = partMesh;
+        else if (partType === 'head') jaegerGroup.userData.head = partMesh;
+        else if (partType === 'weapon-l') jaegerGroup.userData.weaponL = partMesh;
+        else if (partType === 'weapon-r') jaegerGroup.userData.weaponR = partMesh;
+        
         jaegerGroup.add(partMesh);
       });
       
       jaegerGroup.position.set(-8, 0, 0);
       jaegerGroup.scale.set(1.2, 1.2, 1.2);
+      
+      // Initialize animation state
+      jaegerGroup.userData.walkCycle = 0;
+      jaegerGroup.userData.isAttacking = false;
+      jaegerGroup.userData.attackFrame = 0;
+      jaegerGroup.userData.currentAttack = null;
       
       return jaegerGroup;
     }
@@ -1221,71 +930,134 @@
     function createKaiju() {
       const kaijuGroup = new THREE.Group();
       
-      // Body
-      const bodyGeom = new THREE.BoxGeometry(3, 4, 2);
-      const bodyMat = new THREE.MeshStandardMaterial({
-        color: 0x2d1b2e,
-        metalness: 0.3,
-        roughness: 0.8,
+      const kaijuMat = new THREE.MeshStandardMaterial({
+        color: 0x1a0a1f,
+        metalness: 0.2,
+        roughness: 0.9,
         emissive: 0xe63946,
-        emissiveIntensity: 0.3
+        emissiveIntensity: 0.4
       });
-      const body = new THREE.Mesh(bodyGeom, bodyMat);
-      body.position.y = 3;
-      body.castShadow = true;
-      kaijuGroup.add(body);
       
-      // Head
-      const headGeom = new THREE.SphereGeometry(1.2, 16, 16);
-      const head = new THREE.Mesh(headGeom, bodyMat);
-      head.position.y = 5.5;
+      const scaleMat = new THREE.MeshStandardMaterial({
+        color: 0x4a1f4f,
+        metalness: 0.4,
+        roughness: 0.7
+      });
+      
+      // Massive torso
+      const torsoGeom = new THREE.BoxGeometry(5, 6, 3.5);
+      const torso = new THREE.Mesh(torsoGeom, kaijuMat);
+      torso.position.y = 4;
+      torso.castShadow = true;
+      kaijuGroup.add(torso);
+      
+      // Spine ridges
+      for (let i = 0; i < 8; i++) {
+        const spineGeom = new THREE.ConeGeometry(0.4, 1.2, 4);
+        const spine = new THREE.Mesh(spineGeom, scaleMat);
+        spine.position.set(0, 1.5 + i * 0.7, -1.5);
+        spine.rotation.x = Math.PI / 6;
+        kaijuGroup.add(spine);
+      }
+      
+      // Huge head
+      const headGeom = new THREE.BoxGeometry(3, 2.8, 3.2);
+      const head = new THREE.Mesh(headGeom, kaijuMat);
+      head.position.y = 8;
       head.castShadow = true;
       kaijuGroup.add(head);
       
-      // Eyes (glowing)
-      const eyeGeom = new THREE.SphereGeometry(0.2, 8, 8);
+      // Jaw
+      const jawGeom = new THREE.BoxGeometry(2.5, 1, 3);
+      const jaw = new THREE.Mesh(jawGeom, scaleMat);
+      jaw.position.set(0, 6.8, 0.5);
+      kaijuGroup.add(jaw);
+      
+      // Glowing eyes
+      const eyeGeom = new THREE.SphereGeometry(0.4, 12, 12);
       const eyeMat = new THREE.MeshStandardMaterial({
         color: 0xff0000,
         emissive: 0xff0000,
-        emissiveIntensity: 1
+        emissiveIntensity: 2
       });
       const leftEye = new THREE.Mesh(eyeGeom, eyeMat);
-      leftEye.position.set(-0.5, 5.7, 1);
+      leftEye.position.set(-0.8, 8.3, 1.4);
       const rightEye = new THREE.Mesh(eyeGeom, eyeMat);
-      rightEye.position.set(0.5, 5.7, 1);
+      rightEye.position.set(0.8, 8.3, 1.4);
       kaijuGroup.add(leftEye, rightEye);
       
-      // Arms
-      const armGeom = new THREE.CylinderGeometry(0.5, 0.7, 3, 8);
-      const leftArm = new THREE.Mesh(armGeom, bodyMat);
-      leftArm.position.set(-2, 3, 0);
-      leftArm.rotation.z = Math.PI / 4;
-      leftArm.castShadow = true;
-      const rightArm = new THREE.Mesh(armGeom, bodyMat);
-      rightArm.position.set(2, 3, 0);
-      rightArm.rotation.z = -Math.PI / 4;
-      rightArm.castShadow = true;
-      kaijuGroup.add(leftArm, rightArm);
+      // Horns
+      for (let side = -1; side <= 1; side += 2) {
+        const hornGeom = new THREE.ConeGeometry(0.3, 1.8, 6);
+        const horn = new THREE.Mesh(hornGeom, scaleMat);
+        horn.position.set(side * 1.2, 9.5, 0);
+        horn.rotation.z = side * Math.PI / 6;
+        kaijuGroup.add(horn);
+      }
       
-      // Legs
-      const legGeom = new THREE.CylinderGeometry(0.6, 0.8, 2, 8);
-      const leftLeg = new THREE.Mesh(legGeom, bodyMat);
-      leftLeg.position.set(-0.8, 0.5, 0);
-      leftLeg.castShadow = true;
-      const rightLeg = new THREE.Mesh(legGeom, bodyMat);
-      rightLeg.position.set(0.8, 0.5, 0);
-      rightLeg.castShadow = true;
-      kaijuGroup.add(leftLeg, rightLeg);
+      // Massive arms
+      for (let side = -1; side <= 1; side += 2) {
+        const shoulderGeom = new THREE.SphereGeometry(1, 16, 16);
+        const shoulder = new THREE.Mesh(shoulderGeom, kaijuMat);
+        shoulder.position.set(side * 3, 6, 0);
+        kaijuGroup.add(shoulder);
+        
+        const upperArmGeom = new THREE.CylinderGeometry(0.8, 0.9, 3, 12);
+        const upperArm = new THREE.Mesh(upperArmGeom, kaijuMat);
+        upperArm.position.set(side * 3.5, 4, 0);
+        kaijuGroup.add(upperArm);
+        
+        const forearmGeom = new THREE.CylinderGeometry(0.9, 1.1, 2.5, 12);
+        const forearm = new THREE.Mesh(forearmGeom, scaleMat);
+        forearm.position.set(side * 4, 1.8, 0);
+        kaijuGroup.add(forearm);
+        
+        // Claws
+        for (let c = 0; c < 4; c++) {
+          const clawGeom = new THREE.ConeGeometry(0.15, 1.2, 4);
+          const claw = new THREE.Mesh(clawGeom, eyeMat);
+          claw.position.set(side * 4.2 + (c - 1.5) * 0.25, 0.2, 0.5);
+          claw.rotation.x = Math.PI / 3;
+          kaijuGroup.add(claw);
+        }
+      }
       
-      kaijuGroup.position.set(8, 0, 0);
-      kaijuGroup.scale.set(1.3, 1.3, 1.3);
+      // Thick legs
+      for (let side = -1; side <= 1; side += 2) {
+        const thighGeom = new THREE.CylinderGeometry(1, 1.1, 3.5, 12);
+        const thigh = new THREE.Mesh(thighGeom, kaijuMat);
+        thigh.position.set(side * 1.5, 1.5, 0);
+        kaijuGroup.add(thigh);
+        
+        const calfGeom = new THREE.CylinderGeometry(0.9, 1, 2.5, 12);
+        const calf = new THREE.Mesh(calfGeom, scaleMat);
+        calf.position.set(side * 1.5, -1.5, 0.3);
+        kaijuGroup.add(calf);
+        
+        // Foot
+        const footGeom = new THREE.BoxGeometry(1.2, 0.5, 2);
+        const foot = new THREE.Mesh(footGeom, kaijuMat);
+        foot.position.set(side * 1.5, -2.8, 0.8);
+        kaijuGroup.add(foot);
+      }
       
+      // Massive tail
+      for (let i = 0; i < 8; i++) {
+        const size = 0.8 - (i * 0.08);
+        const tailGeom = new THREE.CylinderGeometry(size, size * 0.85, 1.5, 8);
+        const tail = new THREE.Mesh(tailGeom, i % 2 === 0 ? kaijuMat : scaleMat);
+        tail.position.set(0, 3 - i * 0.3, -2 - i * 1.2);
+        tail.rotation.x = Math.PI / 2 + (i * 0.15);
+        kaijuGroup.add(tail);
+      }
+      
+      kaijuGroup.position.set(12, 0, 0);
+      kaijuGroup.scale.set(1.8, 1.8, 1.8);
       return kaijuGroup;
     }
 
     function setupPartInventory() {
       const inventory = document.getElementById('parts-inventory');
-      
       partTypes.forEach(part => {
         const button = document.createElement('button');
         button.className = 'part-slot w-full p-3 rounded-lg text-left font-teko text-lg font-bold transition-all';
@@ -1299,27 +1071,20 @@
             ⚡${part.power} 🛡️${part.armor} 💨${part.speed}
           </div>
         `;
-        
         button.addEventListener('click', () => {
-          if (tempPart) {
-            buildScene.remove(tempPart);
-          }
-          
+          if (tempPart) buildScene.remove(tempPart);
           selectedPartType = part.id;
           tempPart = createPart3D(part.id);
           if (tempPart) {
-            tempPart.position.set(0, currentHeight + 1, 0);
+            tempPart.position.set(currentX, currentHeight + 1, currentZ);
             buildScene.add(tempPart);
           }
-          
           document.getElementById('weld-btn').disabled = false;
-          
           document.querySelectorAll('.part-slot').forEach(btn => {
             btn.style.borderColor = 'rgba(0,180,216,0.3)';
           });
           button.style.borderColor = '#00b4d8';
         });
-        
         inventory.appendChild(button);
       });
     }
@@ -1329,30 +1094,99 @@
         if (tempPart) {
           currentHeight += 0.5;
           tempPart.position.y = currentHeight + 1;
-          updateHeightDisplay();
+          updatePositionDisplay();
+        }
+      });
+      document.getElementById('move-down-btn').addEventListener('click', () => {
+        if (tempPart && currentHeight > -2) {
+          currentHeight -= 0.5;
+          tempPart.position.y = currentHeight + 1;
+          updatePositionDisplay();
+        }
+      });
+      document.getElementById('move-left-btn').addEventListener('click', () => {
+        if (tempPart) {
+          currentX -= 0.5;
+          tempPart.position.x = currentX;
+          updatePositionDisplay();
+        }
+      });
+      document.getElementById('move-right-btn').addEventListener('click', () => {
+        if (tempPart) {
+          currentX += 0.5;
+          tempPart.position.x = currentX;
+          updatePositionDisplay();
+        }
+      });
+      document.getElementById('move-forward-btn').addEventListener('click', () => {
+        if (tempPart) {
+          currentZ -= 0.5;
+          tempPart.position.z = currentZ;
+          updatePositionDisplay();
+        }
+      });
+      document.getElementById('move-back-btn').addEventListener('click', () => {
+        if (tempPart) {
+          currentZ += 0.5;
+          tempPart.position.z = currentZ;
+          updatePositionDisplay();
         }
       });
       
-      document.getElementById('move-down-btn').addEventListener('click', () => {
-        if (tempPart && currentHeight > 0) {
-          currentHeight -= 0.5;
-          tempPart.position.y = currentHeight + 1;
-          updateHeightDisplay();
+      document.addEventListener('keydown', (e) => {
+        if (currentMode !== 'build' || !tempPart) return;
+        switch(e.key) {
+          case 'ArrowUp':
+            e.preventDefault();
+            currentHeight += 0.5;
+            tempPart.position.y = currentHeight + 1;
+            updatePositionDisplay();
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            if (currentHeight > -2) {
+              currentHeight -= 0.5;
+              tempPart.position.y = currentHeight + 1;
+              updatePositionDisplay();
+            }
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            currentX -= 0.5;
+            tempPart.position.x = currentX;
+            updatePositionDisplay();
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            currentX += 0.5;
+            tempPart.position.x = currentX;
+            updatePositionDisplay();
+            break;
+          case 'w':
+          case 'W':
+            currentZ -= 0.5;
+            tempPart.position.z = currentZ;
+            updatePositionDisplay();
+            break;
+          case 's':
+          case 'S':
+            currentZ += 0.5;
+            tempPart.position.z = currentZ;
+            updatePositionDisplay();
+            break;
+          case ' ':
+            e.preventDefault();
+            document.getElementById('weld-btn').click();
+            break;
         }
       });
       
       document.getElementById('weld-btn').addEventListener('click', () => {
         if (!tempPart) return;
-        
-        // Flash effect
         const canvas = buildRenderer.domElement;
         canvas.style.filter = 'brightness(2)';
         setTimeout(() => { canvas.style.filter = 'brightness(1)'; }, 100);
-        
-        // Add to welded parts
         weldedParts.push(tempPart);
-        
-        // Update stats
         const stats = tempPart.userData.stats;
         if (stats) {
           jaegerStats.power += stats.power;
@@ -1360,10 +1194,12 @@
           jaegerStats.speed += stats.speed;
           updateStatsDisplay();
         }
-        
         tempPart = null;
         selectedPartType = null;
+        currentX = 0;
+        currentZ = 0;
         document.getElementById('weld-btn').disabled = true;
+        updatePositionDisplay();
       });
       
       document.getElementById('clear-jaeger-btn').addEventListener('click', () => {
@@ -1374,9 +1210,11 @@
           tempPart = null;
         }
         currentHeight = 0;
+        currentX = 0;
+        currentZ = 0;
         jaegerStats = { power: 0, armor: 0, speed: 0 };
         updateStatsDisplay();
-        updateHeightDisplay();
+        updatePositionDisplay();
         document.getElementById('weld-btn').disabled = true;
       });
     }
@@ -1386,7 +1224,6 @@
       const combatBtn = document.getElementById('combat-mode-btn');
       const buildMode = document.getElementById('build-mode');
       const combatMode = document.getElementById('combat-mode');
-      
       buildBtn.addEventListener('click', () => {
         currentMode = 'build';
         buildMode.classList.remove('hidden');
@@ -1394,72 +1231,54 @@
         combatMode.classList.add('hidden');
         combatMode.classList.remove('flex');
       });
-      
       combatBtn.addEventListener('click', () => {
         if (weldedParts.length === 0) {
           addBattleLog('Build a Jaeger first!', '#e63946');
           return;
         }
-        
         currentMode = 'combat';
         buildMode.classList.add('hidden');
         buildMode.classList.remove('flex');
         combatMode.classList.remove('hidden');
         combatMode.classList.add('flex');
-        
         startCombat();
       });
     }
 
     function startCombat() {
-      // Clear previous combat
       if (playerJaeger) combatScene.remove(playerJaeger);
       if (enemyKaiju) combatScene.remove(enemyKaiju);
-      
-      // Create combatants
       playerJaeger = createJaegerFromParts();
       enemyKaiju = createKaiju();
-      
       combatScene.add(playerJaeger);
       combatScene.add(enemyKaiju);
-      
-      // Reset combat state
       playerHP = 100 + jaegerStats.armor;
       enemyHP = 150;
       combatInProgress = true;
-      
-      // Reset positions
-      playerPosition = { x: -8, z: 0 };
+      playerPosition = { x: -10, z: 0 };
       playerRotation = 0;
-      playerJaeger.position.set(-8, 0, 0);
+      cameraYaw = 0;
+      cameraPitch = 0;
+      playerJaeger.position.set(-10, 0, 0);
       playerJaeger.rotation.y = 0;
-      enemyKaiju.position.set(8, 0, 0);
-      
-      // Reset keys
+      enemyKaiju.position.set(12, 0, 0);
       keys = {};
-      
       document.getElementById('player-hp').textContent = playerHP;
       document.getElementById('enemy-hp').textContent = enemyHP;
       updateHealthBars();
-      
-      // Clear log
       battleLog = [];
       document.getElementById('battle-log').innerHTML = `
         <div>Neural handshake complete!</div>
         <div style="color: #ffc300;">Engaging Kaiju!</div>
         <div style="color: #90e0ef;">Use WASD to move, Q/E to rotate!</div>
       `;
-      
       document.getElementById('battle-result').classList.add('hidden');
     }
 
     function setupCombatControls() {
-      // Keyboard controls
       document.addEventListener('keydown', (e) => {
         if (currentMode !== 'combat' || !combatInProgress) return;
         keys[e.key.toLowerCase()] = true;
-        
-        // Number keys for attacks
         if (e.key === '1') document.getElementById('attack-punch-btn').click();
         if (e.key === '2') document.getElementById('attack-plasma-btn').click();
         if (e.key === '3') document.getElementById('attack-sword-btn').click();
@@ -1468,27 +1287,40 @@
           document.getElementById('attack-punch-btn').click();
         }
       });
-      
       document.addEventListener('keyup', (e) => {
         keys[e.key.toLowerCase()] = false;
       });
       
-      // Button clicks
+      // Mouse click attacks
+      document.addEventListener('mousedown', (e) => {
+        if (currentMode !== 'combat' || !combatInProgress) return;
+        if (document.pointerLockElement !== document.getElementById('combat-canvas')) return;
+        
+        if (e.button === 0) { // Left click - Sword swing
+          playerAttack('sword', 25, 40, 8);
+        } else if (e.button === 2) { // Right click - Plasma cannon
+          e.preventDefault();
+          playerAttack('plasma', 20, 35, 15);
+        }
+      });
+      
+      // Prevent context menu in combat
+      document.getElementById('combat-canvas').addEventListener('contextmenu', (e) => {
+        if (currentMode === 'combat') e.preventDefault();
+      });
+      
       document.getElementById('attack-punch-btn').addEventListener('click', () => {
         if (!combatInProgress) return;
         playerAttack('punch', 15, 25, 8);
       });
-      
       document.getElementById('attack-plasma-btn').addEventListener('click', () => {
         if (!combatInProgress) return;
         playerAttack('plasma', 20, 35, 15);
       });
-      
       document.getElementById('attack-sword-btn').addEventListener('click', () => {
         if (!combatInProgress) return;
         playerAttack('sword', 25, 40, 7);
       });
-      
       document.getElementById('return-build-btn').addEventListener('click', () => {
         document.getElementById('build-mode-btn').click();
       });
@@ -1496,178 +1328,402 @@
     
     function updatePlayerMovement() {
       if (!playerJaeger || !combatInProgress) return;
-      
       const moveSpeed = 0.15 + (jaegerStats.speed * 0.002);
-      const rotateSpeed = 0.05;
+      let isMoving = false;
       
-      // Movement
+      // Rotate player based on camera yaw
+      playerRotation = cameraYaw;
+      
+      // Move relative to camera direction
       if (keys['w']) {
-        playerPosition.x += Math.sin(playerRotation) * moveSpeed;
-        playerPosition.z += Math.cos(playerRotation) * moveSpeed;
+        playerPosition.x += Math.sin(cameraYaw) * moveSpeed;
+        playerPosition.z += Math.cos(cameraYaw) * moveSpeed;
+        isMoving = true;
       }
       if (keys['s']) {
-        playerPosition.x -= Math.sin(playerRotation) * moveSpeed;
-        playerPosition.z -= Math.cos(playerRotation) * moveSpeed;
+        playerPosition.x -= Math.sin(cameraYaw) * moveSpeed;
+        playerPosition.z -= Math.cos(cameraYaw) * moveSpeed;
+        isMoving = true;
       }
       if (keys['a']) {
-        playerPosition.x -= Math.cos(playerRotation) * moveSpeed;
-        playerPosition.z += Math.sin(playerRotation) * moveSpeed;
+        playerPosition.x -= Math.cos(cameraYaw) * moveSpeed;
+        playerPosition.z += Math.sin(cameraYaw) * moveSpeed;
+        isMoving = true;
       }
       if (keys['d']) {
-        playerPosition.x += Math.cos(playerRotation) * moveSpeed;
-        playerPosition.z -= Math.sin(playerRotation) * moveSpeed;
+        playerPosition.x += Math.cos(cameraYaw) * moveSpeed;
+        playerPosition.z -= Math.sin(cameraYaw) * moveSpeed;
+        isMoving = true;
       }
       
-      // Rotation
-      if (keys['q']) playerRotation += rotateSpeed;
-      if (keys['e']) playerRotation -= rotateSpeed;
-      
-      // Boundary limits
-      playerPosition.x = Math.max(-15, Math.min(5, playerPosition.x));
-      playerPosition.z = Math.max(-10, Math.min(10, playerPosition.z));
-      
-      // Apply to Jaeger
+      playerPosition.x = Math.max(-20, Math.min(20, playerPosition.x));
+      playerPosition.z = Math.max(-20, Math.min(20, playerPosition.z));
       playerJaeger.position.x = playerPosition.x;
       playerJaeger.position.z = playerPosition.z;
       playerJaeger.rotation.y = playerRotation;
       
-      // Update camera to follow action
-      combatCamera.position.x = (playerPosition.x + 8) * 0.3;
-      combatCamera.lookAt(0, 5, 0);
+      // Animate walking when moving
+      if (isMoving && !playerJaeger.userData.isAttacking) {
+        playerJaeger.userData.walkCycle += 0.15;
+        animateWalking(playerJaeger);
+      } else if (!playerJaeger.userData.isAttacking) {
+        // Return to idle pose
+        resetToIdlePose(playerJaeger);
+      }
+      
+      // Update attack animations
+      if (playerJaeger.userData.isAttacking) {
+        updateAttackAnimation(playerJaeger);
+      }
+      
+      // Third-person camera follows player
+      const cameraDistance = 12;
+      const cameraHeight = 7;
+      const targetX = playerPosition.x - Math.sin(cameraYaw) * cameraDistance;
+      const targetZ = playerPosition.z - Math.cos(cameraYaw) * cameraDistance;
+      const targetY = playerPosition.y + cameraHeight + Math.sin(cameraPitch) * 5;
+      
+      // Smooth camera movement
+      combatCamera.position.x += (targetX - combatCamera.position.x) * 0.15;
+      combatCamera.position.y += (targetY - combatCamera.position.y) * 0.15;
+      combatCamera.position.z += (targetZ - combatCamera.position.z) * 0.15;
+      
+      // Look at player position
+      const lookAtX = playerPosition.x + Math.sin(cameraYaw) * 2;
+      const lookAtZ = playerPosition.z + Math.cos(cameraYaw) * 2;
+      combatCamera.lookAt(lookAtX, playerPosition.y + 4, lookAtZ);
+    }
+    
+    function animateWalking(jaeger) {
+      const cycle = jaeger.userData.walkCycle;
+      
+      // Leg swing
+      if (jaeger.userData.legs) {
+        jaeger.userData.legs.rotation.x = Math.sin(cycle) * 0.15;
+      }
+      
+      // Hip sway
+      if (jaeger.userData.lowerBody) {
+        jaeger.userData.lowerBody.rotation.z = Math.sin(cycle) * 0.05;
+      }
+      
+      // Upper body counter-rotation
+      if (jaeger.userData.upperBody) {
+        jaeger.userData.upperBody.rotation.z = -Math.sin(cycle) * 0.03;
+        jaeger.userData.upperBody.rotation.y = Math.sin(cycle) * 0.08;
+      }
+      
+      // Arm swing
+      if (jaeger.userData.arms) {
+        jaeger.userData.arms.rotation.x = Math.sin(cycle + Math.PI) * 0.12;
+      }
+      
+      // Head stabilization (stays mostly level)
+      if (jaeger.userData.head) {
+        jaeger.userData.head.rotation.x = -Math.sin(cycle) * 0.02;
+      }
+      
+      // Weapon sway
+      if (jaeger.userData.weaponL) {
+        jaeger.userData.weaponL.rotation.x = Math.sin(cycle + Math.PI) * 0.1;
+      }
+      if (jaeger.userData.weaponR) {
+        jaeger.userData.weaponR.rotation.x = Math.sin(cycle) * 0.1;
+      }
+      
+      // Vertical bobbing
+      jaeger.position.y = Math.abs(Math.sin(cycle)) * 0.15;
+    }
+    
+    function resetToIdlePose(jaeger) {
+      const smoothing = 0.1;
+      
+      if (jaeger.userData.legs) {
+        jaeger.userData.legs.rotation.x *= (1 - smoothing);
+      }
+      if (jaeger.userData.lowerBody) {
+        jaeger.userData.lowerBody.rotation.z *= (1 - smoothing);
+      }
+      if (jaeger.userData.upperBody) {
+        jaeger.userData.upperBody.rotation.z *= (1 - smoothing);
+        jaeger.userData.upperBody.rotation.y *= (1 - smoothing);
+      }
+      if (jaeger.userData.arms) {
+        jaeger.userData.arms.rotation.x *= (1 - smoothing);
+      }
+      if (jaeger.userData.head) {
+        jaeger.userData.head.rotation.x *= (1 - smoothing);
+      }
+      if (jaeger.userData.weaponL) {
+        jaeger.userData.weaponL.rotation.x *= (1 - smoothing);
+      }
+      if (jaeger.userData.weaponR) {
+        jaeger.userData.weaponR.rotation.x *= (1 - smoothing);
+      }
+      jaeger.position.y *= (1 - smoothing);
     }
     
     function playerAttack(type, minDmg, maxDmg, range) {
+      if (playerJaeger.userData.isAttacking) return; // Prevent attack spam
+      
       const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
       const bonusDamage = Math.floor(jaegerStats.power * 0.3);
       const totalDamage = damage + bonusDamage;
-      
-      // Check range - must be close enough
       const distance = Math.sqrt(
         Math.pow(playerPosition.x - 8, 2) + 
         Math.pow(playerPosition.z - 0, 2)
       );
-      
       if (distance > range) {
         addBattleLog(`❌ Out of range! Get closer! (${distance.toFixed(1)}m / ${range}m)`, '#e63946');
         return;
       }
       
+      // Start attack animation
+      playerJaeger.userData.isAttacking = true;
+      playerJaeger.userData.attackFrame = 0;
+      playerJaeger.userData.currentAttack = type;
+      
       enemyHP = Math.max(0, enemyHP - totalDamage);
       
-      // Attack animation - lunge forward
-      if (playerJaeger) {
-        const lunge = {
-          x: playerPosition.x + Math.sin(playerRotation) * 2,
-          z: playerPosition.z + Math.cos(playerRotation) * 2
-        };
-        const originalPos = { ...playerPosition };
-        
-        playerJaeger.position.x = lunge.x;
-        playerJaeger.position.z = lunge.z;
-        
-        setTimeout(() => {
-          if (playerJaeger) {
-            playerJaeger.position.x = originalPos.x;
-            playerJaeger.position.z = originalPos.z;
+      const attackNames = {
+        punch: 'ROCKET PUNCH',
+        plasma: 'PLASMA CANNON',
+        sword: 'EXCALIBUR STAB'
+      };
+      addBattleLog(`⚡ ${attackNames[type]}: ${totalDamage} damage!`, '#00b4d8');
+      updateHealthBars();
+      
+      // End attack after animation completes
+      setTimeout(() => {
+        if (playerJaeger) {
+          playerJaeger.userData.isAttacking = false;
+          playerJaeger.userData.currentAttack = null;
+        }
+      }, type === 'sword' ? 800 : 500);
+      
+      if (enemyHP <= 0) {
+        setTimeout(() => endCombat(true), 1000);
+      }
+    }
+    
+    function updateAttackAnimation(jaeger) {
+      jaeger.userData.attackFrame += 1;
+      const frame = jaeger.userData.attackFrame;
+      const attackType = jaeger.userData.currentAttack;
+      
+      if (attackType === 'punch') {
+        // Rocket punch - left arm extends forward
+        if (frame < 10) {
+          // Wind up
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.y = -0.3 * (frame / 10);
           }
-        }, 200);
-      }
-      
-      const attackNames = {
-        punch: 'ROCKET PUNCH',
-        plasma: 'PLASMA CANNON',
-        sword: 'CHAIN SWORD'
-      };
-      
-      addBattleLog(`⚡ ${attackNames[type]}: ${totalDamage} damage!`, '#00b4d8');
-      updateHealthBars();
-      
-      if (enemyHP <= 0) {
-        setTimeout(() => endCombat(true), 1000);
+          if (jaeger.userData.arms) {
+            jaeger.userData.arms.rotation.x = -0.5 * (frame / 10);
+          }
+        } else if (frame < 20) {
+          // Strike!
+          const strikeProgress = (frame - 10) / 10;
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.y = -0.3 + (0.5 * strikeProgress);
+          }
+          if (jaeger.userData.arms) {
+            jaeger.userData.arms.rotation.x = -0.5 + (0.8 * strikeProgress);
+          }
+          if (jaeger.userData.weaponL) {
+            jaeger.userData.weaponL.position.z = -1.5 * strikeProgress;
+          }
+        } else {
+          // Return
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.y *= 0.85;
+          }
+          if (jaeger.userData.arms) {
+            jaeger.userData.arms.rotation.x *= 0.85;
+          }
+          if (jaeger.userData.weaponL) {
+            jaeger.userData.weaponL.position.z *= 0.85;
+          }
+        }
+      } else if (attackType === 'plasma') {
+        // Plasma cannon - aim and fire
+        if (frame < 8) {
+          // Raise cannon
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.x = -0.2 * (frame / 8);
+          }
+          if (jaeger.userData.arms) {
+            jaeger.userData.arms.rotation.y = 0.3 * (frame / 8);
+          }
+          if (jaeger.userData.weaponL) {
+            jaeger.userData.weaponL.rotation.x = -0.4 * (frame / 8);
+          }
+        } else if (frame < 15) {
+          // Fire! (recoil)
+          const recoilProgress = (frame - 8) / 7;
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.x = -0.2 + (0.15 * Math.sin(recoilProgress * Math.PI));
+          }
+          if (jaeger.userData.weaponL) {
+            jaeger.userData.weaponL.position.z = -0.5 * Math.sin(recoilProgress * Math.PI);
+          }
+        } else {
+          // Return
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.x *= 0.9;
+          }
+          if (jaeger.userData.arms) {
+            jaeger.userData.arms.rotation.y *= 0.9;
+          }
+          if (jaeger.userData.weaponL) {
+            jaeger.userData.weaponL.rotation.x *= 0.9;
+            jaeger.userData.weaponL.position.z *= 0.9;
+          }
+        }
+      } else if (attackType === 'sword') {
+        // Excalibur energy sword stab - dramatic overhead strike
+        if (frame < 15) {
+          // Wind up - raise sword overhead
+          const windupProgress = frame / 15;
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.y = 0.4 * windupProgress;
+            jaeger.userData.upperBody.rotation.x = -0.3 * windupProgress;
+          }
+          if (jaeger.userData.arms) {
+            jaeger.userData.arms.rotation.x = -1.2 * windupProgress; // Arms up
+            jaeger.userData.arms.rotation.z = 0.3 * windupProgress;
+          }
+          if (jaeger.userData.weaponR) {
+            jaeger.userData.weaponR.rotation.x = -1.5 * windupProgress; // Sword raised high
+            jaeger.userData.weaponR.position.y = 1.5 * windupProgress;
+          }
+          if (jaeger.userData.head) {
+            jaeger.userData.head.rotation.x = -0.2 * windupProgress; // Look up
+          }
+        } else if (frame < 25) {
+          // STAB! - Lightning fast downward thrust
+          const stabProgress = (frame - 15) / 10;
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.y = 0.4 - (0.7 * stabProgress);
+            jaeger.userData.upperBody.rotation.x = -0.3 + (0.6 * stabProgress);
+          }
+          if (jaeger.userData.arms) {
+            jaeger.userData.arms.rotation.x = -1.2 + (1.5 * stabProgress);
+            jaeger.userData.arms.rotation.z = 0.3 - (0.3 * stabProgress);
+          }
+          if (jaeger.userData.weaponR) {
+            jaeger.userData.weaponR.rotation.x = -1.5 + (2.0 * stabProgress);
+            jaeger.userData.weaponR.position.y = 1.5 - (2.5 * stabProgress);
+            jaeger.userData.weaponR.position.z = -2.0 * stabProgress; // Thrust forward
+          }
+          if (jaeger.userData.lowerBody) {
+            jaeger.userData.lowerBody.rotation.x = 0.15 * stabProgress; // Lean into stab
+          }
+          if (jaeger.userData.head) {
+            jaeger.userData.head.rotation.x = -0.2 + (0.3 * stabProgress); // Look down at target
+          }
+          // Lunge forward
+          if (frame === 18) {
+            jaeger.position.x += Math.sin(playerRotation) * 2;
+            jaeger.position.z += Math.cos(playerRotation) * 2;
+          }
+        } else if (frame < 35) {
+          // Hold the stab briefly (sword penetrating)
+          const holdProgress = (frame - 25) / 10;
+          if (jaeger.userData.weaponR) {
+            // Slight twist of the blade
+            jaeger.userData.weaponR.rotation.y = 0.2 * Math.sin(holdProgress * Math.PI * 2);
+          }
+        } else {
+          // Withdraw - pull back to neutral
+          const returnProgress = Math.min(1, (frame - 35) / 15);
+          if (jaeger.userData.upperBody) {
+            jaeger.userData.upperBody.rotation.y *= (1 - returnProgress * 0.15);
+            jaeger.userData.upperBody.rotation.x *= (1 - returnProgress * 0.15);
+          }
+          if (jaeger.userData.arms) {
+            jaeger.userData.arms.rotation.x *= (1 - returnProgress * 0.15);
+            jaeger.userData.arms.rotation.z *= (1 - returnProgress * 0.15);
+          }
+          if (jaeger.userData.weaponR) {
+            jaeger.userData.weaponR.rotation.x *= (1 - returnProgress * 0.15);
+            jaeger.userData.weaponR.rotation.y *= (1 - returnProgress * 0.15);
+            jaeger.userData.weaponR.position.y *= (1 - returnProgress * 0.15);
+            jaeger.userData.weaponR.position.z *= (1 - returnProgress * 0.15);
+          }
+          if (jaeger.userData.lowerBody) {
+            jaeger.userData.lowerBody.rotation.x *= (1 - returnProgress * 0.15);
+          }
+          if (jaeger.userData.head) {
+            jaeger.userData.head.rotation.x *= (1 - returnProgress * 0.15);
+          }
+          // Return to original position
+          const dx = jaeger.position.x - playerPosition.x;
+          const dz = jaeger.position.z - playerPosition.z;
+          jaeger.position.x -= dx * returnProgress * 0.15;
+          jaeger.position.z -= dz * returnProgress * 0.15;
+        }
       }
     }
-
-    function playerAttack(type, minDmg, maxDmg) {
-      isPlayerTurn = false;
-      disableCombatButtons();
-      
-      const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-      const bonusDamage = Math.floor(jaegerStats.power * 0.3);
-      const totalDamage = damage + bonusDamage;
-      
-      enemyHP = Math.max(0, enemyHP - totalDamage);
-      
-      // Attack animation
-      if (playerJaeger) {
-        const originalX = playerJaeger.position.x;
-        playerJaeger.position.x = originalX + 2;
-        setTimeout(() => { playerJaeger.position.x = originalX; }, 300);
+    
+    function updateEnemyAI() {
+      if (!enemyKaiju || !combatInProgress || enemyHP <= 0) return;
+      const dx = playerPosition.x - 12;
+      const dz = playerPosition.z - 0;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      if (distance > 10) {
+        enemyKaiju.position.x += dx * 0.01;
+        enemyKaiju.position.z += dz * 0.01;
       }
-      
-      const attackNames = {
-        punch: 'ROCKET PUNCH',
-        plasma: 'PLASMA CANNON',
-        sword: 'CHAIN SWORD'
-      };
-      
-      addBattleLog(`⚡ ${attackNames[type]}: ${totalDamage} damage!`, '#00b4d8');
-      updateHealthBars();
-      
-      if (enemyHP <= 0) {
-        setTimeout(() => endCombat(true), 1000);
-        return;
+      const angle = Math.atan2(dx, dz);
+      enemyKaiju.rotation.y = angle;
+      if (Math.random() < 0.01 && distance < 15) {
+        enemyAttackActive();
       }
-      
-      setTimeout(() => enemyAttack(), 1500);
     }
-
-    function enemyAttack() {
+    
+    function enemyAttackActive() {
       const attacks = [
         { name: 'CLAW STRIKE', min: 15, max: 25 },
         { name: 'TAIL WHIP', min: 20, max: 30 },
         { name: 'ACID SPIT', min: 25, max: 35 }
       ];
-      
       const attack = attacks[Math.floor(Math.random() * attacks.length)];
       let damage = Math.floor(Math.random() * (attack.max - attack.min + 1)) + attack.min;
-      
-      // Armor reduces damage
+      const dx = playerPosition.x - enemyKaiju.position.x;
+      const dz = playerPosition.z - enemyKaiju.position.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      if (distance > 12) {
+        damage = Math.floor(damage * 0.5);
+      }
       const damageReduction = Math.floor(jaegerStats.armor * 0.2);
       damage = Math.max(5, damage - damageReduction);
-      
       playerHP = Math.max(0, playerHP - damage);
-      
-      // Attack animation
       if (enemyKaiju) {
-        enemyKaiju.classList?.add('kaiju-attack');
         const originalX = enemyKaiju.position.x;
-        enemyKaiju.position.x = originalX - 2;
+        const originalZ = enemyKaiju.position.z;
+        enemyKaiju.position.x -= dx * 0.3;
+        enemyKaiju.position.z -= dz * 0.3;
         setTimeout(() => { 
-          enemyKaiju.position.x = originalX;
-          enemyKaiju.classList?.remove('kaiju-attack');
+          if (enemyKaiju) {
+            enemyKaiju.position.x = originalX;
+            enemyKaiju.position.z = originalZ;
+          }
         }, 300);
       }
-      
       addBattleLog(`💀 Kaiju ${attack.name}: ${damage} damage!`, '#e63946');
       updateHealthBars();
-      
       if (playerHP <= 0) {
         setTimeout(() => endCombat(false), 1000);
-        return;
       }
-      
-      isPlayerTurn = true;
-      enableCombatButtons();
     }
 
     function updateHealthBars() {
       const playerBar = document.getElementById('player-health-bar');
       const enemyBar = document.getElementById('enemy-health-bar');
       const maxPlayerHP = 100 + jaegerStats.armor;
-      
       playerBar.style.width = `${(playerHP / maxPlayerHP) * 100}%`;
       enemyBar.style.width = `${(enemyHP / 150) * 100}%`;
-      
       document.getElementById('player-hp').textContent = playerHP;
       document.getElementById('enemy-hp').textContent = enemyHP;
     }
@@ -1684,11 +1740,9 @@
     function endCombat(playerWon) {
       combatInProgress = false;
       keys = {};
-      
       const resultScreen = document.getElementById('battle-result');
       const resultTitle = document.getElementById('result-title');
       const resultMessage = document.getElementById('result-message');
-      
       if (playerWon) {
         resultTitle.textContent = '⚡ VICTORY!';
         resultTitle.style.color = '#00b4d8';
@@ -1700,7 +1754,6 @@
         resultMessage.textContent = 'Your Jaeger has fallen. Rebuild and try again!';
         addBattleLog('💀 DEFEAT! Jaeger destroyed!', '#e63946');
       }
-      
       resultScreen.classList.remove('hidden');
     }
 
@@ -1711,117 +1764,38 @@
       document.getElementById('stat-total').textContent = jaegerStats.power + jaegerStats.armor + jaegerStats.speed;
     }
 
-    function updateHeightDisplay() {
+    function updatePositionDisplay() {
       document.getElementById('current-height').textContent = currentHeight.toFixed(1);
+      document.getElementById('current-x').textContent = currentX.toFixed(1);
+      document.getElementById('current-z').textContent = currentZ.toFixed(1);
     }
 
     function animateBuild() {
       requestAnimationFrame(animateBuild);
-      
       if (tempPart) {
         tempPart.rotation.y += 0.01;
       }
-      
       weldedParts.forEach(part => {
         part.rotation.y += 0.002;
       });
-      
       buildRenderer.render(buildScene, buildCamera);
     }
 
     function animateCombat() {
       requestAnimationFrame(animateCombat);
-      
       if (combatInProgress) {
         updatePlayerMovement();
         updateEnemyAI();
       }
-      
       if (enemyKaiju && combatInProgress) {
         enemyKaiju.position.y = Math.sin(Date.now() * 0.002) * 0.2;
       }
-      
       combatRenderer.render(combatScene, combatCamera);
     }
-    
-    function updateEnemyAI() {
-      if (!enemyKaiju || !combatInProgress || enemyHP <= 0) return;
-      
-      // Move towards player
-      const dx = playerPosition.x - 8;
-      const dz = playerPosition.z - 0;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-      
-      if (distance > 8) {
-        // Move closer
-        enemyKaiju.position.x += dx * 0.01;
-        enemyKaiju.position.z += dz * 0.01;
-      }
-      
-      // Face player
-      const angle = Math.atan2(dx, dz);
-      enemyKaiju.rotation.y = angle;
-      
-      // Random attacks
-      if (Math.random() < 0.01 && distance < 12) {
-        enemyAttackActive();
-      }
-    }
-    
-    function enemyAttackActive() {
-      const attacks = [
-        { name: 'CLAW STRIKE', min: 15, max: 25 },
-        { name: 'TAIL WHIP', min: 20, max: 30 },
-        { name: 'ACID SPIT', min: 25, max: 35 }
-      ];
-      
-      const attack = attacks[Math.floor(Math.random() * attacks.length)];
-      let damage = Math.floor(Math.random() * (attack.max - attack.min + 1)) + attack.min;
-      
-      // Distance affects damage
-      const dx = playerPosition.x - 8;
-      const dz = playerPosition.z - 0;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-      
-      if (distance > 10) {
-        damage = Math.floor(damage * 0.5); // Half damage at range
-      }
-      
-      // Armor reduces damage
-      const damageReduction = Math.floor(jaegerStats.armor * 0.2);
-      damage = Math.max(5, damage - damageReduction);
-      
-      playerHP = Math.max(0, playerHP - damage);
-      
-      // Attack animation - lunge
-      if (enemyKaiju) {
-        const originalX = enemyKaiju.position.x;
-        const originalZ = enemyKaiju.position.z;
-        
-        enemyKaiju.position.x -= dx * 0.3;
-        enemyKaiju.position.z -= dz * 0.3;
-        
-        setTimeout(() => { 
-          if (enemyKaiju) {
-            enemyKaiju.position.x = originalX;
-            enemyKaiju.position.z = originalZ;
-          }
-        }, 300);
-      }
-      
-      addBattleLog(`💀 Kaiju ${attack.name}: ${damage} damage!`, '#e63946');
-      updateHealthBars();
-      
-      if (playerHP <= 0) {
-        setTimeout(() => endCombat(false), 1000);
-      }
-    }
 
-    // Element SDK Integration
     async function onConfigChange(cfg) {
       const customFont = cfg.font_family || defaultConfig.font_family;
       const baseSize = cfg.font_size || defaultConfig.font_size;
-      
       const title = document.getElementById('game-title');
       if (title) {
         title.textContent = cfg.game_title || defaultConfig.game_title;
@@ -1829,24 +1803,20 @@
         title.style.fontSize = `${baseSize * 1.875}px`;
         title.style.color = cfg.primary_color || defaultConfig.primary_color;
       }
-      
       const instructions = document.getElementById('instruction-text');
       if (instructions) {
         instructions.textContent = cfg.instruction_text || defaultConfig.instruction_text;
         instructions.style.color = cfg.secondary_color || defaultConfig.secondary_color;
         instructions.style.fontSize = `${baseSize}px`;
       }
-      
       const buildLabel = document.getElementById('build-mode-label');
       if (buildLabel) {
         buildLabel.textContent = cfg.build_mode_label || defaultConfig.build_mode_label;
       }
-      
       const combatLabel = document.getElementById('combat-mode-label');
       if (combatLabel) {
         combatLabel.textContent = cfg.combat_mode_label || defaultConfig.combat_mode_label;
       }
-      
       const app = document.getElementById('app');
       if (app) {
         app.style.background = `linear-gradient(180deg, ${cfg.background_color || defaultConfig.background_color} 0%, #001d3d 50%, #003566 100%)`;
@@ -1860,35 +1830,35 @@
             get: () => cfg.background_color || defaultConfig.background_color,
             set: (value) => {
               config.background_color = value;
-              window.elementSdk.setConfig({ background_color: value });
+              if (window.elementSdk) window.elementSdk.setConfig({ background_color: value });
             }
           },
           {
             get: () => cfg.primary_color || defaultConfig.primary_color,
             set: (value) => {
               config.primary_color = value;
-              window.elementSdk.setConfig({ primary_color: value });
+              if (window.elementSdk) window.elementSdk.setConfig({ primary_color: value });
             }
           },
           {
             get: () => cfg.secondary_color || defaultConfig.secondary_color,
             set: (value) => {
               config.secondary_color = value;
-              window.elementSdk.setConfig({ secondary_color: value });
+              if (window.elementSdk) window.elementSdk.setConfig({ secondary_color: value });
             }
           },
           {
             get: () => cfg.enemy_color || defaultConfig.enemy_color,
             set: (value) => {
               config.enemy_color = value;
-              window.elementSdk.setConfig({ enemy_color: value });
+              if (window.elementSdk) window.elementSdk.setConfig({ enemy_color: value });
             }
           },
           {
             get: () => cfg.accent_color || defaultConfig.accent_color,
             set: (value) => {
               config.accent_color = value;
-              window.elementSdk.setConfig({ accent_color: value });
+              if (window.elementSdk) window.elementSdk.setConfig({ accent_color: value });
             }
           }
         ],
@@ -1897,14 +1867,14 @@
           get: () => cfg.font_family || defaultConfig.font_family,
           set: (value) => {
             config.font_family = value;
-            window.elementSdk.setConfig({ font_family: value });
+            if (window.elementSdk) window.elementSdk.setConfig({ font_family: value });
           }
         },
         fontSizeable: {
           get: () => cfg.font_size || defaultConfig.font_size,
           set: (value) => {
             config.font_size = value;
-            window.elementSdk.setConfig({ font_size: value });
+            if (window.elementSdk) window.elementSdk.setConfig({ font_size: value });
           }
         }
       };
@@ -1919,7 +1889,6 @@
       ]);
     }
 
-    // Initialize SDK
     if (window.elementSdk) {
       window.elementSdk.init({
         defaultConfig,
@@ -1930,7 +1899,6 @@
       config = window.elementSdk.config || { ...defaultConfig };
     }
 
-    // Handle window resize
     window.addEventListener('resize', () => {
       if (buildRenderer && buildCamera) {
         const buildContainer = document.getElementById('build-canvas');
@@ -1938,7 +1906,6 @@
         buildCamera.updateProjectionMatrix();
         buildRenderer.setSize(buildContainer.clientWidth, buildContainer.clientHeight);
       }
-      
       if (combatRenderer && combatCamera) {
         const combatContainer = document.getElementById('combat-canvas');
         combatCamera.aspect = combatContainer.clientWidth / combatContainer.clientHeight;
@@ -1947,7 +1914,6 @@
       }
     });
 
-    // Initialize on load
     window.addEventListener('DOMContentLoaded', () => {
       initBuildMode();
       initCombatMode();
@@ -1956,11 +1922,10 @@
       setupModeToggle();
       setupCombatControls();
       updateStatsDisplay();
-      updateHeightDisplay();
+      updatePositionDisplay();
       onConfigChange(config);
-      
       document.getElementById('weld-btn').disabled = true;
     });
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c642518f7ce26df',t:'MTc2OTgwOTQwNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c644f68f6508c8f',t:'MTc2OTgxMTE0MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
